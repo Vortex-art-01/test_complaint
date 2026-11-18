@@ -1,0 +1,15 @@
+/* Модуль «Жалобы»: дополнения к оформлению портала (Bootstrap 3.1.1). */
+.complaints .panel-heading h4 { margin: 4px 0; }
+.complaints .complaints-hash { font-family: Menlo, Consolas, monospace; font-size: 11px; color: #777; word-break: break-all; }
+.complaints .complaints-text { white-space: normal; word-wrap: break-word; }
+.complaints .complaints-actions { margin: 10px 0 20px; }
+.complaints .complaints-actions .btn,
+.complaints .panel-body > .btn { margin: 0 4px 4px 0; }
+.complaints .complaints-route { margin-top: 15px; }
+.complaints .complaints-files li { margin-bottom: 4px; }
+.complaints .complaints-upload { margin-top: 8px; }
+.complaints .complaints-upload .help-block { margin-bottom: 0; }
+.complaints .complaints-requisites th { width: 40%; font-weight: normal; background: #f5f5f5; }
+.complaints .complaints-lot-complaint .panel-heading .pull-right { font-weight: normal; color: #777; }
+.complaints .label { display: inline-block; margin: 1px 2px 1px 0; white-space: normal; }
+.complaints .text-nowrap { white-space: nowrap; }

@@ -94,6 +94,18 @@ $config['complaints'] = [
         'app_lot' => ['table' => 'test_app_lots'],
     ],
 
+    // ПРОЕКТ: адреса Bootstrap 3.1.1, jQuery 1.10.2 и стилей портала (для страниц модуля
+    // вне общего макета) и файлов модуля из каталога assets/complaints.
+    'assets' => [
+        'bootstrap_css' => '/css/bootstrap.min.css',
+        'portal_css' => '/css/style.css',
+        'jquery' => '/js/jquery.js',
+        'bootstrap_js' => '/js/bootstrap.min.js',
+        'module_css' => '/assets/complaints/css/complaints.css',
+        'module_js' => '/assets/complaints/js/complaints.js',
+        'signer_js' => '/assets/complaints/js/complaints.signer.js',
+    ],
+
     // Свои адаптеры портов вместо адаптеров модуля: интерфейс => класс.
     // Пример: Complaints\Application\Port\Notifier::class => My_complaints_notifier::class.
     'adapters' => [],
