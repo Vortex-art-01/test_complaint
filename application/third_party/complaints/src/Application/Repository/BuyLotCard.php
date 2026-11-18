@@ -1,0 +1,21 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Complaints\Application\Repository;
+
+use Complaints\Application\Shared\LocalizedText;
+
+/**
+ * Лот закупки из test_buy_lots.
+ */
+final readonly class BuyLotCard
+{
+    public function __construct(
+        public int $id,
+        public int $buyId,
+        public string $number,
+        public LocalizedText $name,
+    ) {
+    }
+}
