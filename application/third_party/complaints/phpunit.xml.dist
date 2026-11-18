@@ -13,6 +13,7 @@
         <testsuite name="unit">
             <directory>tests/Domain</directory>
             <directory>tests/Application</directory>
+            <directory>tests/Infrastructure</directory>
         </testsuite>
         <!-- Нужна база PostgreSQL: переменная окружения COMPLAINTS_TEST_DSN. -->
         <testsuite name="integration">

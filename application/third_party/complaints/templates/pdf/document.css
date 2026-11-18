@@ -1,0 +1,13 @@
+body { font-family: "DejaVu Sans", sans-serif; font-size: 10pt; color: #222; }
+h1 { font-size: 13pt; text-align: center; margin: 0 0 4pt; }
+h1 .kz { font-weight: normal; }
+.number { text-align: center; margin: 0 0 12pt; }
+h2 { font-size: 11pt; margin: 12pt 0 4pt; border-bottom: 1px solid #999; }
+table { width: 100%; border-collapse: collapse; margin: 0 0 6pt; }
+th, td { border: 1px solid #bbb; padding: 3pt 4pt; vertical-align: top; text-align: left; }
+th { width: 38%; background: #f2f2f2; font-weight: normal; }
+table.list th { width: auto; }
+.kz { color: #555; }
+.text { border: 1px solid #bbb; padding: 6pt; }
+.hash { font-family: "DejaVu Sans Mono", monospace; font-size: 8pt; word-break: break-all; }
+.note { margin-top: 14pt; font-size: 8pt; color: #555; }
