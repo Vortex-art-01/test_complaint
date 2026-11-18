@@ -331,7 +331,7 @@ final class ReviewFlowTest extends TestCase
         $this->world->get(ApproveDecision::class)->execute(self::DECISION, base64_encode('cms'));
     }
 
-    public function testRecallAnnulsSignaturesAndResendingNeedsNewVersion(): void
+    public function testRecallAnnulsSignaturesAndResendingNeedsFreshVersion(): void
     {
         $this->answerEverything();
         $this->steps->send(self::DECISION);

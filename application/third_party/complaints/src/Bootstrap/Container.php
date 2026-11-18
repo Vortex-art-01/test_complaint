@@ -18,9 +18,25 @@ final class Container
     /** @var array<string, object> */
     private array $instances = [];
 
+    /** @var array<string, class-string> */
+    private array $bindings = [];
+
     public function set(string $id, object $service): void
     {
+        unset($this->bindings[$id]);
         $this->instances[$id] = $service;
+    }
+
+    /**
+     * Интерфейс собирается как указанный класс при первом обращении.
+     * Заменяет ранее заданный объект или привязку.
+     *
+     * @param class-string $implementation
+     */
+    public function bind(string $id, string $implementation): void
+    {
+        unset($this->instances[$id]);
+        $this->bindings[$id] = $implementation;
     }
 
     /**
@@ -33,6 +49,13 @@ final class Container
         if (isset($this->instances[$id])) {
             /** @var T */
             return $this->instances[$id];
+        }
+        if (isset($this->bindings[$id])) {
+            /** @var T $bound */
+            $bound = $this->get($this->bindings[$id]);
+            $this->instances[$id] = $bound;
+
+            return $bound;
         }
 
         $reflection = new ReflectionClass($id);

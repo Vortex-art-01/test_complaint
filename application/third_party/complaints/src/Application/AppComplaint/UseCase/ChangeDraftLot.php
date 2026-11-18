@@ -12,7 +12,7 @@ use Complaints\Application\Exception\ValidationFailed;
 use Complaints\Application\Port\Clock;
 use Complaints\Application\Port\CurrentUserProvider;
 use Complaints\Application\Repository\AppComplaintRepository;
-use Complaints\Application\Repository\TransactionManager;
+use Complaints\Application\Repository\TransactionRunner;
 use Complaints\Domain\AppComplaint\AppComplaintStatus;
 
 /**
@@ -26,7 +26,7 @@ final class ChangeDraftLot
         private readonly DraftAccess $access,
         private readonly FilingRules $rules,
         private readonly AppComplaintRepository $complaints,
-        private readonly TransactionManager $transactions,
+        private readonly TransactionRunner $transactions,
         private readonly Clock $clock,
     ) {
     }

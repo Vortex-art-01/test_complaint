@@ -32,7 +32,7 @@ interface AppComplaintRepository
     /**
      * Создаёт черновик; номер «Ж-…» присваивает БД.
      */
-    public function create(NewAppComplaint $complaint, DateTimeImmutable $now): int;
+    public function create(AppComplaintDraft $complaint, DateTimeImmutable $now): int;
 
     public function updateContent(int $complaintId, ?string $contactPhone, ?string $description, DateTimeImmutable $now): void;
 

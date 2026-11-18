@@ -19,7 +19,7 @@ use Complaints\Application\Port\NotificationTarget;
 use Complaints\Application\Port\NotificationType;
 use Complaints\Application\Port\Notifier;
 use Complaints\Application\Repository\AppComplaintRepository;
-use Complaints\Application\Repository\TransactionManager;
+use Complaints\Application\Repository\TransactionRunner;
 use Complaints\Application\Service\SignatureService;
 use Complaints\Application\Service\StatusTransitioner;
 use Complaints\Domain\AppComplaint\AppComplaintStatus;
@@ -42,7 +42,7 @@ final class SendComplaintForSignature
         private readonly SignatureService $signatures,
         private readonly StatusTransitioner $transitions,
         private readonly Notifier $notifier,
-        private readonly TransactionManager $transactions,
+        private readonly TransactionRunner $transactions,
         private readonly Clock $clock,
     ) {
     }

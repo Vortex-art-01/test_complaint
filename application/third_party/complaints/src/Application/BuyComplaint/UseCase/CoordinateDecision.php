@@ -19,7 +19,7 @@ use Complaints\Application\Port\OrganizationDirectory;
 use Complaints\Application\Repository\BuyComplaintRepository;
 use Complaints\Application\Repository\DocumentRepository;
 use Complaints\Application\Repository\ProcurementRepository;
-use Complaints\Application\Repository\TransactionManager;
+use Complaints\Application\Repository\TransactionRunner;
 use Complaints\Application\Service\SignatureService;
 use Complaints\Application\Service\StatusTransitioner;
 use Complaints\Domain\BuyComplaint\BuyComplaintStatus;
@@ -42,7 +42,7 @@ final class CoordinateDecision
         private readonly StatusTransitioner $transitions,
         private readonly ProcurementRepository $procurement,
         private readonly Notifier $notifier,
-        private readonly TransactionManager $transactions,
+        private readonly TransactionRunner $transactions,
         private readonly Clock $clock,
     ) {
     }

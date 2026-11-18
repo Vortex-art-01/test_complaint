@@ -14,7 +14,7 @@ use Complaints\Application\Port\Clock;
 use Complaints\Application\Port\CurrentUserProvider;
 use Complaints\Application\Port\ProcurementLotGateway;
 use Complaints\Application\Repository\BuyComplaintRepository;
-use Complaints\Application\Repository\TransactionManager;
+use Complaints\Application\Repository\TransactionRunner;
 use Complaints\Application\Service\StatusTransitioner;
 use Complaints\Domain\BuyComplaint\BuyComplaintLot;
 use Complaints\Domain\BuyComplaint\DecisionType;
@@ -35,7 +35,7 @@ final class CancelDecisionLots
         private readonly ProcurementLotGateway $lotGateway,
         private readonly StatusTransitioner $transitions,
         private readonly ExecutionCompletion $completion,
-        private readonly TransactionManager $transactions,
+        private readonly TransactionRunner $transactions,
         private readonly Clock $clock,
     ) {
     }

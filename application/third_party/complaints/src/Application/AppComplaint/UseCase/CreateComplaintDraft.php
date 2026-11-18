@@ -12,10 +12,10 @@ use Complaints\Application\Exception\AccessDenied;
 use Complaints\Application\Exception\ValidationFailed;
 use Complaints\Application\Port\Clock;
 use Complaints\Application\Port\CurrentUserProvider;
+use Complaints\Application\Repository\AppComplaintDraft;
 use Complaints\Application\Repository\AppComplaintRepository;
-use Complaints\Application\Repository\NewAppComplaint;
 use Complaints\Application\Repository\StatusHistoryRepository;
-use Complaints\Application\Repository\TransactionManager;
+use Complaints\Application\Repository\TransactionRunner;
 use Complaints\Domain\AppComplaint\AppComplaintStatus;
 use Complaints\Domain\History\HistoryEntityType;
 
@@ -31,7 +31,7 @@ final class CreateComplaintDraft
         private readonly FilingRules $rules,
         private readonly AppComplaintRepository $complaints,
         private readonly StatusHistoryRepository $history,
-        private readonly TransactionManager $transactions,
+        private readonly TransactionRunner $transactions,
         private readonly Clock $clock,
     ) {
     }
@@ -58,7 +58,7 @@ final class CreateComplaintDraft
                 throw ValidationFailed::field('app_lot_id', 'complaints_error_duplicate_complaint');
             }
 
-            $complaintId = $this->complaints->create(new NewAppComplaint(
+            $complaintId = $this->complaints->create(new AppComplaintDraft(
                 $command->buyId,
                 $lot->appLot->appId,
                 $user->organizationId,

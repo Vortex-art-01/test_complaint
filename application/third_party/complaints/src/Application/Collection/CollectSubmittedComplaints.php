@@ -12,12 +12,12 @@ use Complaints\Application\Port\NotificationTarget;
 use Complaints\Application\Port\NotificationType;
 use Complaints\Application\Port\Notifier;
 use Complaints\Application\Repository\AppComplaintRepository;
+use Complaints\Application\Repository\BuyComplaintCycle;
 use Complaints\Application\Repository\BuyComplaintRepository;
 use Complaints\Application\Repository\CollectionBatch;
-use Complaints\Application\Repository\NewBuyComplaint;
 use Complaints\Application\Repository\ProcurementRepository;
 use Complaints\Application\Repository\StatusHistoryRepository;
-use Complaints\Application\Repository\TransactionManager;
+use Complaints\Application\Repository\TransactionRunner;
 use Complaints\Application\Service\DeadlineCalculator;
 use Complaints\Application\Service\DocumentIssuer;
 use Complaints\Application\Service\StatusTransitioner;
@@ -52,7 +52,7 @@ final class CollectSubmittedComplaints
         private readonly StatusHistoryRepository $history,
         private readonly DocumentIssuer $documents,
         private readonly Notifier $notifier,
-        private readonly TransactionManager $transactions,
+        private readonly TransactionRunner $transactions,
         private readonly ComplaintSettings $settings,
         private readonly DisplayDate $dates,
         private readonly Clock $clock,
@@ -107,7 +107,7 @@ final class CollectSubmittedComplaints
 
     private function decisionFor(CollectionBatch $batch, DateTimeImmutable $now, CollectionReport $report): BuyComplaint
     {
-        $createdId = $this->decisions->create(new NewBuyComplaint(
+        $createdId = $this->decisions->create(new BuyComplaintCycle(
             $batch->buyId,
             $this->authorities->authorityFor($batch->buyId),
             $batch->protocolPublishedAt,

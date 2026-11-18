@@ -15,7 +15,7 @@ use Complaints\Application\Port\CurrentUserProvider;
 use Complaints\Application\Repository\AnswerRepository;
 use Complaints\Application\Repository\AttachmentRepository;
 use Complaints\Application\Repository\BuyComplaintRepository;
-use Complaints\Application\Repository\TransactionManager;
+use Complaints\Application\Repository\TransactionRunner;
 use Complaints\Application\Service\DocumentIssuer;
 use Complaints\Domain\BuyComplaint\BuyComplaintStatus;
 use Complaints\Domain\Document\AttachmentOwner;
@@ -34,7 +34,7 @@ final class RemoveAnswerAttachment
         private readonly AttachmentRepository $attachments,
         private readonly LotAnswers $lotAnswers,
         private readonly DocumentIssuer $documents,
-        private readonly TransactionManager $transactions,
+        private readonly TransactionRunner $transactions,
         private readonly Clock $clock,
     ) {
     }

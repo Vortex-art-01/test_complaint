@@ -9,7 +9,7 @@ use Throwable;
 /**
  * Транзакция сценария.
  */
-interface TransactionManager
+interface TransactionRunner
 {
     /**
      * Выполняет действие в одной транзакции: фиксирует при успехе,

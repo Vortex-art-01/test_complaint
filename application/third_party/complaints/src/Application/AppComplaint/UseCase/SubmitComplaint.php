@@ -13,7 +13,7 @@ use Complaints\Application\Port\Clock;
 use Complaints\Application\Port\CurrentUserProvider;
 use Complaints\Application\Repository\AppComplaintRepository;
 use Complaints\Application\Repository\DocumentRepository;
-use Complaints\Application\Repository\TransactionManager;
+use Complaints\Application\Repository\TransactionRunner;
 use Complaints\Application\Service\SignatureService;
 use Complaints\Application\Service\StatusTransitioner;
 use Complaints\Domain\AppComplaint\AppComplaintStatus;
@@ -34,7 +34,7 @@ final class SubmitComplaint
         private readonly DocumentRepository $documents,
         private readonly SignatureService $signatures,
         private readonly StatusTransitioner $transitions,
-        private readonly TransactionManager $transactions,
+        private readonly TransactionRunner $transactions,
         private readonly Clock $clock,
     ) {
     }

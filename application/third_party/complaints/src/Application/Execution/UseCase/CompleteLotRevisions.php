@@ -7,7 +7,7 @@ namespace Complaints\Application\Execution\UseCase;
 use Complaints\Application\Execution\ExecutionCompletion;
 use Complaints\Application\Port\ProcurementLotGateway;
 use Complaints\Application\Repository\BuyComplaintRepository;
-use Complaints\Application\Repository\TransactionManager;
+use Complaints\Application\Repository\TransactionRunner;
 use Complaints\Application\Service\StatusTransitioner;
 use Complaints\Domain\BuyComplaint\LotExecutionStatus;
 
@@ -23,7 +23,7 @@ final class CompleteLotRevisions
         private readonly ProcurementLotGateway $lotGateway,
         private readonly StatusTransitioner $transitions,
         private readonly ExecutionCompletion $completion,
-        private readonly TransactionManager $transactions,
+        private readonly TransactionRunner $transactions,
     ) {
     }
 

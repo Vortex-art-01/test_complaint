@@ -12,7 +12,7 @@ use Complaints\Application\Port\Clock;
 use Complaints\Application\Port\CurrentUserProvider;
 use Complaints\Application\Port\FileStorage;
 use Complaints\Application\Repository\AttachmentRepository;
-use Complaints\Application\Repository\TransactionManager;
+use Complaints\Application\Repository\TransactionRunner;
 use Complaints\Application\Service\AttachmentRules;
 use Complaints\Application\Shared\UploadedFile;
 use Complaints\Domain\AppComplaint\AppComplaintStatus;
@@ -29,7 +29,7 @@ final class AddComplaintAttachment
         private readonly AttachmentRules $rules,
         private readonly AttachmentRepository $attachments,
         private readonly FileStorage $files,
-        private readonly TransactionManager $transactions,
+        private readonly TransactionRunner $transactions,
         private readonly Clock $clock,
     ) {
     }

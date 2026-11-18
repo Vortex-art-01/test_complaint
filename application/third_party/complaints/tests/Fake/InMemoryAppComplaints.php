@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Complaints\Tests\Fake;
 
 use Complaints\Application\Exception\NotFound;
+use Complaints\Application\Repository\AppComplaintDraft;
 use Complaints\Application\Repository\AppComplaintRepository;
 use Complaints\Application\Repository\ApplicationLotCard;
 use Complaints\Application\Repository\CollectionBatch;
-use Complaints\Application\Repository\NewAppComplaint;
 use Complaints\Domain\AppComplaint\AppComplaint;
 use Complaints\Domain\AppComplaint\AppComplaintLot;
 use Complaints\Domain\AppComplaint\AppComplaintStatus;
@@ -43,7 +43,7 @@ final class InMemoryAppComplaints implements AppComplaintRepository
         return $this->get($complaintId);
     }
 
-    public function create(NewAppComplaint $complaint, DateTimeImmutable $now): int
+    public function create(AppComplaintDraft $complaint, DateTimeImmutable $now): int
     {
         $id = count($this->complaints) + 1;
         $this->complaints[$id] = [

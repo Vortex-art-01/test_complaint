@@ -9,7 +9,7 @@ use Complaints\Application\Exception\AccessDenied;
 use Complaints\Application\Exception\StatusConflict;
 use Complaints\Application\Port\Clock;
 use Complaints\Application\Port\CurrentUserProvider;
-use Complaints\Application\Repository\TransactionManager;
+use Complaints\Application\Repository\TransactionRunner;
 use Complaints\Application\Service\StatusTransitioner;
 use Complaints\Domain\BuyComplaint\BuyComplaintStatus;
 
@@ -22,7 +22,7 @@ final class ReopenDecision
         private readonly CurrentUserProvider $users,
         private readonly DecisionAccess $access,
         private readonly StatusTransitioner $transitions,
-        private readonly TransactionManager $transactions,
+        private readonly TransactionRunner $transactions,
         private readonly Clock $clock,
     ) {
     }

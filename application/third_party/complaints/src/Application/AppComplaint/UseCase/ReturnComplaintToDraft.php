@@ -11,7 +11,7 @@ use Complaints\Application\Exception\ValidationFailed;
 use Complaints\Application\Port\Clock;
 use Complaints\Application\Port\CurrentUserProvider;
 use Complaints\Application\Repository\AppComplaintRepository;
-use Complaints\Application\Repository\TransactionManager;
+use Complaints\Application\Repository\TransactionRunner;
 use Complaints\Application\Service\DocumentIssuer;
 use Complaints\Application\Service\StatusTransitioner;
 use Complaints\Domain\AppComplaint\AppComplaintStatus;
@@ -30,7 +30,7 @@ final class ReturnComplaintToDraft
         private readonly AppComplaintRepository $complaints,
         private readonly DocumentIssuer $documents,
         private readonly StatusTransitioner $transitions,
-        private readonly TransactionManager $transactions,
+        private readonly TransactionRunner $transactions,
         private readonly Clock $clock,
     ) {
     }

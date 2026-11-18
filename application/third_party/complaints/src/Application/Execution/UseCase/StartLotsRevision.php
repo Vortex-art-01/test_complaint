@@ -13,7 +13,7 @@ use Complaints\Application\Port\Clock;
 use Complaints\Application\Port\CurrentUserProvider;
 use Complaints\Application\Port\ProcurementLotGateway;
 use Complaints\Application\Repository\BuyComplaintRepository;
-use Complaints\Application\Repository\TransactionManager;
+use Complaints\Application\Repository\TransactionRunner;
 use Complaints\Application\Service\StatusTransitioner;
 use Complaints\Domain\BuyComplaint\BuyComplaintLot;
 use Complaints\Domain\BuyComplaint\DecisionType;
@@ -34,7 +34,7 @@ final class StartLotsRevision
         private readonly LotActions $lotActions,
         private readonly ProcurementLotGateway $lotGateway,
         private readonly StatusTransitioner $transitions,
-        private readonly TransactionManager $transactions,
+        private readonly TransactionRunner $transactions,
         private readonly Clock $clock,
     ) {
     }

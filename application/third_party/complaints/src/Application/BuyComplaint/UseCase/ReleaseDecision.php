@@ -11,7 +11,7 @@ use Complaints\Application\Exception\StatusConflict;
 use Complaints\Application\Port\Clock;
 use Complaints\Application\Port\CurrentUserProvider;
 use Complaints\Application\Repository\BuyComplaintRepository;
-use Complaints\Application\Repository\TransactionManager;
+use Complaints\Application\Repository\TransactionRunner;
 use Complaints\Domain\BuyComplaint\BuyComplaintStatus;
 
 /**
@@ -25,7 +25,7 @@ final class ReleaseDecision
         private readonly AccessGuard $guard,
         private readonly DecisionAccess $access,
         private readonly BuyComplaintRepository $decisions,
-        private readonly TransactionManager $transactions,
+        private readonly TransactionRunner $transactions,
         private readonly Clock $clock,
     ) {
     }

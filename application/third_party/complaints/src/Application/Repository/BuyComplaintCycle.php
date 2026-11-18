@@ -10,7 +10,7 @@ use DateTimeImmutable;
 /**
  * Данные нового решения по жалобам (цикла рассмотрения).
  */
-final readonly class NewBuyComplaint
+final readonly class BuyComplaintCycle
 {
     public function __construct(
         public int $buyId,

@@ -12,7 +12,7 @@ use Complaints\Application\Exception\StatusConflict;
 use Complaints\Application\Exception\ValidationFailed;
 use Complaints\Application\Port\Clock;
 use Complaints\Application\Port\CurrentUserProvider;
-use Complaints\Application\Repository\TransactionManager;
+use Complaints\Application\Repository\TransactionRunner;
 use Complaints\Domain\BuyComplaint\BuyComplaintStatus;
 
 /**
@@ -26,7 +26,7 @@ final class FormConsolidatedDocument
         private readonly DecisionAccess $access,
         private readonly DecisionCompleteness $completeness,
         private readonly DecisionPdf $pdf,
-        private readonly TransactionManager $transactions,
+        private readonly TransactionRunner $transactions,
         private readonly Clock $clock,
     ) {
     }

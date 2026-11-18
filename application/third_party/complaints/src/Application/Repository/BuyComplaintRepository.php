@@ -35,7 +35,7 @@ interface BuyComplaintRepository
     /**
      * Создаёт решение; null — для пары (закупка, окончание срока) решение уже есть.
      */
-    public function create(NewBuyComplaint $decision, DateTimeImmutable $now): ?int;
+    public function create(BuyComplaintCycle $decision, DateTimeImmutable $now): ?int;
 
     public function findByBuyAndAppealEnd(int $buyId, DateTimeImmutable $appealEndsAt): ?BuyComplaint;
 

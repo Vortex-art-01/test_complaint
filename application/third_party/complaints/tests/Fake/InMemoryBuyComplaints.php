@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Complaints\Tests\Fake;
 
 use Complaints\Application\Exception\NotFound;
+use Complaints\Application\Repository\BuyComplaintCycle;
 use Complaints\Application\Repository\BuyComplaintRepository;
-use Complaints\Application\Repository\NewBuyComplaint;
 use Complaints\Domain\BuyComplaint\BuyComplaint;
 use Complaints\Domain\BuyComplaint\BuyComplaintLot;
 use Complaints\Domain\BuyComplaint\BuyComplaintStatus;
@@ -57,7 +57,7 @@ final class InMemoryBuyComplaints implements BuyComplaintRepository
         return $this->get($id);
     }
 
-    public function create(NewBuyComplaint $decision, DateTimeImmutable $now): ?int
+    public function create(BuyComplaintCycle $decision, DateTimeImmutable $now): ?int
     {
         if ($this->findByBuyAndAppealEnd($decision->buyId, $decision->appealPeriod->endsAt) !== null) {
             return null;

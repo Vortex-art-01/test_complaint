@@ -10,7 +10,7 @@ use DateTimeImmutable;
 /**
  * Данные нового черновика жалобы.
  */
-final readonly class NewAppComplaint
+final readonly class AppComplaintDraft
 {
     public function __construct(
         public int $buyId,

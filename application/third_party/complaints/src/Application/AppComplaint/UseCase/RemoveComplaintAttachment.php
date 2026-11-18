@@ -11,7 +11,7 @@ use Complaints\Application\Exception\StatusConflict;
 use Complaints\Application\Port\Clock;
 use Complaints\Application\Port\CurrentUserProvider;
 use Complaints\Application\Repository\AttachmentRepository;
-use Complaints\Application\Repository\TransactionManager;
+use Complaints\Application\Repository\TransactionRunner;
 use Complaints\Domain\AppComplaint\AppComplaintStatus;
 use Complaints\Domain\Document\AttachmentOwner;
 
@@ -24,7 +24,7 @@ final class RemoveComplaintAttachment
         private readonly CurrentUserProvider $users,
         private readonly DraftAccess $access,
         private readonly AttachmentRepository $attachments,
-        private readonly TransactionManager $transactions,
+        private readonly TransactionRunner $transactions,
         private readonly Clock $clock,
     ) {
     }

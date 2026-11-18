@@ -99,7 +99,7 @@ final class ExecutionTest extends TestCase
         $this->world->get(CancelDecisionLots::class)->execute($decisionId);
     }
 
-    public function testRevisionIsExecutedWhenNewProtocolIsPublished(): void
+    public function testRevisionIsExecutedWhenProtocolIsRepublished(): void
     {
         $decisionId = $this->approveCancelAndRevision();
         self::assertSame(1, $this->world->get(StartLotsRevision::class)->execute($decisionId));

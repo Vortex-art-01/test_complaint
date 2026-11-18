@@ -13,6 +13,9 @@ use Complaints\Application\BuyComplaint\UseCase\SaveLotAnswers;
 use Complaints\Application\BuyComplaint\UseCase\SaveLotAnswersCommand;
 use Complaints\Application\BuyComplaint\UseCase\SendDecisionCommand;
 use Complaints\Application\BuyComplaint\UseCase\SendDecisionForApproval;
+use Complaints\Application\Repository\AppComplaintRepository;
+use Complaints\Application\Repository\BuyComplaintRepository;
+use Complaints\Application\Repository\DocumentRepository;
 use Complaints\Domain\BuyComplaint\DecisionType;
 use Complaints\Domain\BuyComplaint\ReviewMethod;
 use Complaints\Domain\BuyComplaint\Verdict;
@@ -21,6 +24,8 @@ use LogicException;
 
 /**
  * Шаги рассмотрения для тестов: от собранных жалоб до утверждённого решения.
+ * Состояние читается через интерфейсы репозиториев — шаги работают
+ * и на репозиториях в памяти, и на SQL-репозиториях.
  */
 final class ReviewSteps
 {
@@ -29,12 +34,27 @@ final class ReviewSteps
     ) {
     }
 
+    private function complaints(): AppComplaintRepository
+    {
+        return $this->world->get(AppComplaintRepository::class);
+    }
+
+    private function decisions(): BuyComplaintRepository
+    {
+        return $this->world->get(BuyComplaintRepository::class);
+    }
+
+    private function documents(): DocumentRepository
+    {
+        return $this->world->get(DocumentRepository::class);
+    }
+
     /**
      * Решение, в которое собрана жалоба.
      */
     public function decisionOf(int $complaintId): int
     {
-        return $this->world->complaints->get($complaintId)->buyComplaintId
+        return $this->complaints()->get($complaintId)->buyComplaintId
             ?? throw new LogicException('Жалоба ' . $complaintId . ' ещё не собрана.');
     }
 
@@ -43,18 +63,18 @@ final class ReviewSteps
      */
     public function decisionLotOf(int $complaintId): int
     {
-        return $this->world->complaints->lotOf($complaintId)->buyComplaintLotId
+        return $this->complaints()->lotOf($complaintId)->buyComplaintLotId
             ?? throw new LogicException('Жалоба ' . $complaintId . ' ещё не собрана.');
     }
 
     public function complaintLotOf(int $complaintId): int
     {
-        return $this->world->complaints->lotOf($complaintId)->id;
+        return $this->complaints()->lotOf($complaintId)->id;
     }
 
     public function answerOf(int $complaintId): ?int
     {
-        return $this->world->complaints->lotOf($complaintId)->answerId;
+        return $this->complaints()->lotOf($complaintId)->answerId;
     }
 
     public function chooseMethod(int $decisionId, ReviewMethod $method = ReviewMethod::PerComplaint): void
@@ -98,7 +118,7 @@ final class ReviewSteps
         $this->world->actAs(World::REVIEWER);
         foreach ($complaintIds as $complaintId) {
             $answerId = $this->answerOf($complaintId) ?? throw new LogicException('Нет ответа на жалобу ' . $complaintId);
-            if ($this->world->documents->current(DocumentType::Answer, $answerId) === null) {
+            if ($this->documents()->current(DocumentType::Answer, $answerId) === null) {
                 $this->world->get(FormAnswerDocument::class)->execute($answerId);
             }
         }
@@ -121,7 +141,7 @@ final class ReviewSteps
      */
     public function approve(int $decisionId): void
     {
-        if ($this->world->decisions->get($decisionId)->coordinatorUserId !== null) {
+        if ($this->decisions()->get($decisionId)->coordinatorUserId !== null) {
             $this->world->actAs(World::COORDINATOR);
             $this->world->get(CoordinateDecision::class)->execute($decisionId, base64_encode('cms-coordinator'));
         }
@@ -142,7 +162,7 @@ final class ReviewSteps
             $byLot[$this->decisionLotOf($complaintId)][$complaintId] = $verdict;
         }
         foreach ($byLot as $decisionLotId => $lotVerdicts) {
-            $this->answer($lotVerdicts, $types[$this->world->decisions->lot($decisionLotId)->buyLotId] ?? null);
+            $this->answer($lotVerdicts, $types[$this->decisions()->lot($decisionLotId)->buyLotId] ?? null);
         }
         $this->formAnswers(array_keys($verdicts));
     }
@@ -156,7 +176,7 @@ final class ReviewSteps
     public function decide(array $verdicts, array $types = []): int
     {
         $decisionId = $this->decisionOf(array_key_first($verdicts));
-        if ($this->world->decisions->get($decisionId)->reviewMethod === null) {
+        if ($this->decisions()->get($decisionId)->reviewMethod === null) {
             $this->chooseMethod($decisionId);
         }
         $this->answerAll($verdicts, $types);

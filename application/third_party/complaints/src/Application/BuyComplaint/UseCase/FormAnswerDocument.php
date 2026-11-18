@@ -15,7 +15,7 @@ use Complaints\Application\Port\Clock;
 use Complaints\Application\Port\CurrentUserProvider;
 use Complaints\Application\Repository\AnswerRepository;
 use Complaints\Application\Repository\BuyComplaintRepository;
-use Complaints\Application\Repository\TransactionManager;
+use Complaints\Application\Repository\TransactionRunner;
 use Complaints\Application\Service\DocumentIssuer;
 use Complaints\Domain\AppComplaint\AppComplaintLot;
 use Complaints\Domain\BuyComplaint\BuyComplaintStatus;
@@ -35,7 +35,7 @@ final class FormAnswerDocument
         private readonly LotAnswers $lotAnswers,
         private readonly DecisionPdf $pdf,
         private readonly DocumentIssuer $documents,
-        private readonly TransactionManager $transactions,
+        private readonly TransactionRunner $transactions,
         private readonly Clock $clock,
     ) {
     }

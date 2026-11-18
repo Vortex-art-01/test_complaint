@@ -42,7 +42,7 @@ use Complaints\Application\Repository\DocumentRepository;
 use Complaints\Application\Repository\ProcurementRepository;
 use Complaints\Application\Repository\SignatureRepository;
 use Complaints\Application\Repository\StatusHistoryRepository;
-use Complaints\Application\Repository\TransactionManager;
+use Complaints\Application\Repository\TransactionRunner;
 use Complaints\Application\Shared\ComplaintSettings;
 use Complaints\Application\Shared\DisplayDate;
 use Complaints\Application\Shared\LocalizedText;
@@ -69,6 +69,7 @@ use Complaints\Tests\Fake\InMemoryHistory;
 use Complaints\Tests\Fake\InMemoryProcurement;
 use Complaints\Tests\Fake\InMemoryQueries;
 use Complaints\Tests\Fake\InMemorySignatures;
+use Closure;
 use DateTimeImmutable;
 use DateTimeZone;
 
@@ -143,7 +144,11 @@ final class World
     public readonly InMemoryAttachments $attachments;
     public readonly InMemoryHistory $history;
 
-    public function __construct()
+    /**
+     * @param (Closure(Container): void)|null $persistence заменяет хранение в памяти,
+     *        например SQL-репозиториями в интеграционных тестах
+     */
+    public function __construct(?Closure $persistence = null)
     {
         $timeZone = new DateTimeZone('Asia/Almaty');
         $this->users = new FakeCurrentUser();
@@ -181,7 +186,7 @@ final class World
             Clock::class => $this->clock,
             ProcurementLotGateway::class => $this->gateway,
             ApplicationEligibility::class => $this->eligibility,
-            TransactionManager::class => new ImmediateTransactions(),
+            TransactionRunner::class => new ImmediateTransactions(),
             ProcurementRepository::class => $this->procurement,
             AppComplaintRepository::class => $this->complaints,
             BuyComplaintRepository::class => $this->decisions,
@@ -195,6 +200,9 @@ final class World
             DisplayDate::class => new DisplayDate($timeZone),
         ] as $id => $service) {
             $this->container->set($id, $service);
+        }
+        if ($persistence !== null) {
+            $persistence($this->container);
         }
 
         $this->seed();

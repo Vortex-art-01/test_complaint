@@ -12,7 +12,7 @@ use Complaints\Application\Port\CurrentUserProvider;
 use Complaints\Application\Repository\AnswerRepository;
 use Complaints\Application\Repository\AppComplaintRepository;
 use Complaints\Application\Repository\BuyComplaintRepository;
-use Complaints\Application\Repository\TransactionManager;
+use Complaints\Application\Repository\TransactionRunner;
 use Complaints\Application\Service\DocumentIssuer;
 use Complaints\Domain\BuyComplaint\BuyComplaintStatus;
 use Complaints\Domain\BuyComplaint\ReviewMethod;
@@ -33,7 +33,7 @@ final class ChooseReviewMethod
         private readonly AnswerRepository $answers,
         private readonly AppComplaintRepository $complaints,
         private readonly DocumentIssuer $documents,
-        private readonly TransactionManager $transactions,
+        private readonly TransactionRunner $transactions,
         private readonly Clock $clock,
     ) {
     }
