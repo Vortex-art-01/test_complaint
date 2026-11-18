@@ -13,6 +13,7 @@ use Complaints\Infrastructure\Persistence\ProjectSchema;
 use Complaints\Infrastructure\Persistence\SqlDocumentRepository;
 use Complaints\Infrastructure\Persistence\SqlSignatureRepository;
 use Complaints\Infrastructure\Persistence\SqlValues;
+use Complaints\Infrastructure\System\StatusApplicationEligibility;
 use DateTimeImmutable;
 use DateTimeZone;
 use InvalidArgumentException;
@@ -112,6 +113,25 @@ final class SqlInfrastructureTest extends SqlTestCase
         (new PdoTransactionRunner($this->pdo))->transactional(
             fn () => $signatures->request($document->id, SignerRole::Approver, 22, $now),
         );
+    }
+
+    public function testEligibilityChecksConfiguredStatuses(): void
+    {
+        $db = new Database($this->pdo);
+        $eligibility = static fn (array $appStatuses, array $lotStatuses): StatusApplicationEligibility => new StatusApplicationEligibility(
+            $db,
+            'test_app',
+            'status_id',
+            $appStatuses,
+            'test_app_lots',
+            'status_id',
+            $lotStatuses,
+        );
+
+        self::assertTrue($eligibility([], [])->isEligible(1, 1), 'Пустые списки — любой статус.');
+        self::assertTrue($eligibility([1], [1])->isEligible(1, 1));
+        self::assertFalse($eligibility([5], [])->isEligible(1, 1));
+        self::assertFalse($eligibility([], [5])->isEligible(1, 1));
     }
 
     private function decision(): int
