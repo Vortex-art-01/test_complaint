@@ -7,6 +7,9 @@ namespace Complaints\Tests\Application;
 use Complaints\Application\AppComplaint\UseCase\SendComplaintForSignature;
 use Complaints\Application\AppComplaint\UseCase\ShowComplaint;
 use Complaints\Application\AppComplaint\UseCase\SignComplaint;
+use Complaints\Application\BuyComplaint\UseCase\FormConsolidatedDocument;
+use Complaints\Application\BuyComplaint\UseCase\SendDecisionCommand;
+use Complaints\Application\BuyComplaint\UseCase\SendDecisionForApproval;
 use Complaints\Application\Exception\AccessDenied;
 use Complaints\Application\File\FileKind;
 use Complaints\Application\File\UseCase\DownloadFile;
@@ -128,5 +131,35 @@ final class FileAccessTest extends TestCase
         $this->world->get(SignComplaint::class)->execute($id, base64_encode('cms'));
         $this->expectException(AccessDenied::class);
         $this->world->get(GetSigningSource::class)->execute($document->id);
+    }
+
+    public function testReviewerGetsUnsentConsolidatedDocumentToSignOnSending(): void
+    {
+        $complaint = $this->world->submitted();
+        $this->world->collect();
+        $decisionId = $this->steps->decisionOf($complaint);
+        $this->steps->chooseMethod($decisionId);
+        $this->steps->answerAll([$complaint => Verdict::Rejected]);
+        $this->world->get(FormConsolidatedDocument::class)->execute($decisionId);
+        $document = $this->documentOf(DocumentType::ConsolidatedAnswer, $decisionId);
+
+        self::assertNotSame('', $this->world->get(GetSigningSource::class)->execute($document));
+
+        $this->world->actAs(World::SECOND_REVIEWER);
+        try {
+            $this->world->get(GetSigningSource::class)->execute($document);
+            self::fail('Решение закреплено за другим рассматривающим.');
+        } catch (AccessDenied) {
+        }
+
+        $this->world->actAs(World::REVIEWER);
+        $this->world->get(SendDecisionForApproval::class)->execute(
+            new SendDecisionCommand($decisionId, World::COORDINATOR, World::APPROVER, base64_encode('cms-reviewer')),
+        );
+        $this->world->actAs(World::COORDINATOR);
+        self::assertNotSame('', $this->world->get(GetSigningSource::class)->execute($document));
+        $this->world->actAs(World::REVIEWER);
+        $this->expectException(AccessDenied::class);
+        $this->world->get(GetSigningSource::class)->execute($document);
     }
 }
