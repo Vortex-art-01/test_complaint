@@ -10,6 +10,7 @@ use Complaints\Application\Repository\ApplicationLotCard;
 use Complaints\Application\Repository\BuyCard;
 use Complaints\Application\Repository\BuyLotCard;
 use Complaints\Application\Repository\ProcurementRepository;
+use Complaints\Domain\Shared\Period;
 
 final class InMemoryProcurement implements ProcurementRepository
 {
@@ -24,6 +25,15 @@ final class InMemoryProcurement implements ProcurementRepository
 
     /** @var array<int, ApplicationLotCard> */
     public array $applicationLots = [];
+
+    /**
+     * Проект установил закупке новый срок обжалования (новый протокол итогов).
+     */
+    public function setAppealPeriod(int $buyId, ?Period $period): void
+    {
+        $buy = $this->buy($buyId);
+        $this->buys[$buyId] = new BuyCard($buy->id, $buy->number, $buy->name, $buy->methodId, $buy->organizerOrgId, $buy->publishedAt, $period);
+    }
 
     public function findBuyByNumber(string $number): ?BuyCard
     {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Complaints\Application\BuyComplaint\UseCase;
 
+use Complaints\Application\Access\Actor;
 use Complaints\Application\BuyComplaint\DecisionAccess;
 use Complaints\Application\BuyComplaint\LotAnswers;
 use Complaints\Application\Exception\AccessDenied;
@@ -62,13 +63,13 @@ final class AddAnswerAttachment
                 throw ValidationFailed::field('form', 'complaints_error_method_required');
             }
 
-            $answerId = $this->lotAnswers->ensureAnswer($decision, $lot, $complaintLotId, $user->userId, $now);
+            $answerId = $this->lotAnswers->ensureAnswer($decision, $lot, $complaintLotId, $now);
             $this->lotAnswers->assertNotFormed($answerId, 'file');
             $this->rules->assertAcceptable($file, count($this->attachments->of(AttachmentOwner::Answer, $answerId)));
 
             $fileId = $this->files->store($file->bytes, $file->fileName, $file->mimeType, $user->userId);
-            $attachmentId = $this->attachments->add(AttachmentOwner::Answer, $answerId, $fileId, $user->userId, $now);
-            $this->documents->retire(DocumentType::ConsolidatedAnswer, $decision->id, $user->userId, $now);
+            $attachmentId = $this->attachments->add(AttachmentOwner::Answer, $answerId, $fileId, Actor::of($user), $now);
+            $this->documents->retire(DocumentType::ConsolidatedAnswer, $decision->id, $now);
 
             return $attachmentId;
         });

@@ -3,7 +3,7 @@
 defined('BASEPATH') or exit('No direct script access allowed');
 
 /**
- * Ссылка на PDF документа модуля с версией и контрольной суммой.
+ * Ссылка на PDF документа модуля с номером версии и датой формирования.
  *
  * @var Complaints\Application\View\DocumentView|null $document
  */
@@ -20,4 +20,3 @@ if ($document === null) {
     (<?= complaints_te('complaints_document_version', ['version' => $document->document->version]) ?>,
     <?= complaints_moment($document->document->generatedAt) ?>)
 </span>
-<div class="complaints-hash" title="SHA-256">SHA-256: <?= complaints_e($document->document->sha256->value) ?></div>

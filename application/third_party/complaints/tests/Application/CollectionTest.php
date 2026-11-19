@@ -9,7 +9,6 @@ use Complaints\Application\Collection\CollectSubmittedComplaints;
 use Complaints\Application\Port\NotificationType;
 use Complaints\Domain\AppComplaint\AppComplaintStatus;
 use Complaints\Domain\BuyComplaint\BuyComplaintStatus;
-use Complaints\Domain\History\HistoryEntityType;
 use Complaints\Tests\Support\World;
 use PHPUnit\Framework\TestCase;
 
@@ -53,7 +52,8 @@ final class CollectionTest extends TestCase
             $this->world->complaints->lotOf($second)->buyComplaintLotId,
         );
         self::assertSame([World::REVIEWER, World::SECOND_REVIEWER], $this->world->notifier->recipientsOf(NotificationType::ComplaintsReceived->value));
-        self::assertSame(['in_review'], $this->world->history->trail(HistoryEntityType::BuyComplaint, 1));
+        self::assertSame(2, $this->world->decisions->decisions[1]['lots_count']);
+        self::assertSame(3, $this->world->decisions->decisions[1]['app_complaint_count']);
     }
 
     public function testCollectionIsIdempotent(): void

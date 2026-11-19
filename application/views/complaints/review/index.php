@@ -61,8 +61,8 @@ use Complaints\Domain\BuyComplaint\BuyComplaintStatus;
                         <td><?= complaints_moment($decision->reviewPeriod->startsAt) ?> — <?= complaints_moment($decision->reviewPeriod->displayEndsAt()) ?></td>
                         <td>
                             <?= complaints_label('decision_status', $decision->status) ?>
-                            <?php if ($decision->decisionNumber !== null) : ?>
-                                <div><small><?= complaints_te('complaints_decision_number_date', ['number' => $decision->decisionNumber, 'date' => complaints_moment($decision->approvedAt)]) ?></small></div>
+                            <?php if ($decision->approvedAt !== null) : ?>
+                                <div><small><?= complaints_te('complaints_decision_number_date', ['number' => $decision->id, 'date' => complaints_moment($decision->approvedAt)]) ?></small></div>
                             <?php endif; ?>
                         </td>
                         <td><?= $item->reviewerName === '' ? '<span class="text-muted">' . complaints_te('complaints_not_assigned') . '</span>' : complaints_e($item->reviewerName) ?></td>

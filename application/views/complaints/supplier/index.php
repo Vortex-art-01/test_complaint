@@ -28,7 +28,7 @@ use Complaints\Application\AppComplaint\ComplaintAction;
                     <th><?= complaints_te('complaints_buy') ?></th>
                     <th><?= complaints_te('complaints_lot') ?></th>
                     <th><?= complaints_te('complaints_status') ?></th>
-                    <th><?= complaints_te('complaints_head_signed_at') ?></th>
+                    <th><?= complaints_te('complaints_submission_date') ?></th>
                     <th><?= complaints_te('complaints_result') ?></th>
                     <th><?= complaints_te('complaints_actions') ?></th>
                 </tr>
@@ -46,7 +46,7 @@ use Complaints\Application\AppComplaint\ComplaintAction;
                                 <div><small class="text-muted"><?= complaints_te('complaints_appeal_until', ['date' => complaints_moment($complaint->appealPeriod->displayEndsAt())]) ?></small></div>
                             <?php endif; ?>
                         </td>
-                        <td><?= complaints_moment($item->row->headSignedAt) ?></td>
+                        <td><?= complaints_moment($complaint->submittedAt) ?></td>
                         <td><?= complaints_label('verdict', $item->row->verdict) ?></td>
                         <td class="text-nowrap">
                             <?php if ($item->allows(ComplaintAction::Edit)) : ?>

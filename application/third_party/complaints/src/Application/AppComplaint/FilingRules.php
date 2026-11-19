@@ -7,27 +7,25 @@ namespace Complaints\Application\AppComplaint;
 use Complaints\Application\Exception\ValidationFailed;
 use Complaints\Application\Port\ApplicationEligibility;
 use Complaints\Application\Port\OrganizationDirectory;
-use Complaints\Application\Port\ProcurementLotGateway;
 use Complaints\Application\Repository\ApplicationCard;
 use Complaints\Application\Repository\BuyCard;
 use Complaints\Application\Repository\ProcurementRepository;
-use Complaints\Application\Service\DeadlineCalculator;
 use Complaints\Application\Shared\ComplaintSettings;
+use Complaints\Domain\Shared\Period;
 use DateTimeImmutable;
 
 /**
  * Что организация может обжаловать: закупка организатора и способа из
- * настроек, своя заявка, лоты заявки с правом на жалобу и открытым сроком.
+ * настроек с открытым сроком обжалования (его устанавливает проект при
+ * публикации протокола итогов), своя заявка и лоты заявки с правом на жалобу.
  * Все сведения берутся из БД, а не из параметров запроса.
  */
 final class FilingRules
 {
     public function __construct(
         private readonly ProcurementRepository $procurement,
-        private readonly ProcurementLotGateway $lotGateway,
         private readonly ApplicationEligibility $eligibility,
         private readonly OrganizationDirectory $directory,
-        private readonly DeadlineCalculator $deadlines,
         private readonly ComplaintSettings $settings,
     ) {
     }
@@ -97,9 +95,12 @@ final class FilingRules
         $application = $this->procurement->supplierApplication($buy->id, $supplierOrgId)
             ?? throw ValidationFailed::field($field, 'complaints_error_no_application');
 
-        $lots = $this->openLots($application, $now);
-        if ($lots === []) {
+        if ($buy->appealPeriod === null || !$buy->appealPeriod->isOpenAt($now)) {
             throw ValidationFailed::field($field, 'complaints_error_appeal_closed');
+        }
+        $lots = $this->eligibleLots($application, $buy->appealPeriod);
+        if ($lots === []) {
+            throw ValidationFailed::field($field, 'complaints_error_lot_not_complainable');
         }
 
         return new ComplainableBuy($buy, $application, $lots);
@@ -114,26 +115,18 @@ final class FilingRules
     /**
      * @return list<ComplainableLot>
      */
-    private function openLots(ApplicationCard $application, DateTimeImmutable $now): array
+    private function eligibleLots(ApplicationCard $application, Period $appealPeriod): array
     {
         $appLots = $this->procurement->applicationLots($application->id);
         $buyLots = $this->procurement->buyLots(array_map(static fn ($appLot): int => $appLot->buyLotId, $appLots));
 
-        $open = [];
+        $lots = [];
         foreach ($appLots as $appLot) {
-            $publishedAt = $this->lotGateway->resultsProtocolPublishedAt($appLot->buyLotId);
-            if ($publishedAt === null
-                || !isset($buyLots[$appLot->buyLotId])
-                || !$this->eligibility->isEligible($application->id, $appLot->id)) {
-                continue;
-            }
-
-            $period = $this->deadlines->appealPeriod($publishedAt);
-            if ($period->isOpenAt($now)) {
-                $open[] = new ComplainableLot($appLot, $buyLots[$appLot->buyLotId], $publishedAt, $period);
+            if (isset($buyLots[$appLot->buyLotId]) && $this->eligibility->isEligible($application->id, $appLot->id)) {
+                $lots[] = new ComplainableLot($appLot, $buyLots[$appLot->buyLotId], $appealPeriod);
             }
         }
 
-        return $open;
+        return $lots;
     }
 }

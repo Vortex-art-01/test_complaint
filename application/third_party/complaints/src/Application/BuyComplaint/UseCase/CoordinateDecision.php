@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Complaints\Application\BuyComplaint\UseCase;
 
 use Complaints\Application\Access\AccessGuard;
+use Complaints\Application\Access\Actor;
 use Complaints\Application\BuyComplaint\DecisionAccess;
 use Complaints\Application\Exception\AccessDenied;
 use Complaints\Application\Exception\SignatureRejected;
@@ -27,7 +28,8 @@ use Complaints\Domain\Document\DocumentType;
 use Complaints\Domain\Signature\SignerRole;
 
 /**
- * «Согласовать и подписать»: on_coordination -> on_approval.
+ * «Согласовать и подписать»: on_coordination -> on_approval; coordinated_at —
+ * момент согласования и передачи решения утверждающему.
  */
 final class CoordinateDecision
 {
@@ -65,8 +67,8 @@ final class CoordinateDecision
             $document = $this->documents->current(DocumentType::ConsolidatedAnswer, $decisionId)
                 ?? throw new StatusConflict();
             $authority = $this->directory->organization($decision->authorityOrgId);
-            $this->signatures->sign($document, SignerRole::Coordinator, $user->userId, $signatureBase64, $authority->bin, $now);
-            $this->transitions->moveDecision($decision, BuyComplaintStatus::OnApproval, $user->userId, $now);
+            $this->signatures->sign($document, SignerRole::Coordinator, Actor::of($user), $signatureBase64, $authority->bin, $now);
+            $this->transitions->moveDecision($decision, BuyComplaintStatus::OnApproval, $now, ['coordinated_at' => $now]);
 
             $this->notifier->notifyUser((int) $decision->approverUserId, new Notification(
                 NotificationType::DecisionForApproval,

@@ -8,16 +8,16 @@ use Complaints\Domain\Shared\Period;
 use DateTimeImmutable;
 
 /**
- * Жалоба поставщика по своей заявке (снимок строки test_app_complaint).
+ * Жалоба поставщика по своей заявке (снимок строки app_complaint).
+ *
+ * Срок обжалования — срок закупки, а после сбора — срок, сохранённый в решении.
  */
 final readonly class AppComplaint
 {
-    /**
-     * @param array<string, mixed>|null $requisitesSnapshot реквизиты на момент формирования PDF
-     */
+    public ComplaintNumber $number;
+
     public function __construct(
         public int $id,
-        public ComplaintNumber $number,
         public int $buyId,
         public int $appId,
         public ?int $buyComplaintId,
@@ -26,15 +26,14 @@ final readonly class AppComplaint
         public int $headUserId,
         public ?string $contactPhone,
         public ?string $description,
-        public ?array $requisitesSnapshot,
-        public DateTimeImmutable $protocolPublishedAt,
         public Period $appealPeriod,
         public AppComplaintStatus $status,
         public ?DateTimeImmutable $submittedAt,
-        public ?DateTimeImmutable $withdrawnAt,
+        public ?int $submittedByUserId,
         public DateTimeImmutable $createdAt,
         public ?DateTimeImmutable $deletedAt,
     ) {
+        $this->number = ComplaintNumber::of($id);
     }
 
     public function isAuthoredBy(int $userId): bool

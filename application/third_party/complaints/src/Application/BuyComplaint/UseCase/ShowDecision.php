@@ -20,6 +20,7 @@ use Complaints\Application\Repository\BuyComplaintRepository;
 use Complaints\Application\Repository\ComplaintQueries;
 use Complaints\Application\Repository\ProcurementRepository;
 use Complaints\Application\Service\DocumentViews;
+use Complaints\Application\View\SignatureView;
 use Complaints\Domain\Document\DocumentType;
 
 /**
@@ -61,7 +62,7 @@ final class ShowDecision
             $this->decisions->lots($decisionId),
             $decision->reviewMethod === null || $gaps !== [],
             $consolidated?->document,
-            $signatures === [],
+            $this->isUnsigned($signatures),
         );
         $canSend = in_array(DecisionAction::Send, $actions, true);
 
@@ -81,6 +82,20 @@ final class ShowDecision
             $canSend ? $this->colleagues($decision->authorityOrgId, ModuleRole::Coordinator, $user->userId) : [],
             $canSend ? $this->colleagues($decision->authorityOrgId, ModuleRole::Approver, $user->userId) : [],
         );
+    }
+
+    /**
+     * @param list<SignatureView> $signatures
+     */
+    private function isUnsigned(array $signatures): bool
+    {
+        foreach ($signatures as $view) {
+            if ($view->signature->isSigned()) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function user(?int $userId): ?UserCard

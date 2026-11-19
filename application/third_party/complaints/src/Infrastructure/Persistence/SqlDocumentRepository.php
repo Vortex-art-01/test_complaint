@@ -4,99 +4,138 @@ declare(strict_types=1);
 
 namespace Complaints\Infrastructure\Persistence;
 
+use Complaints\Application\Access\Actor;
 use Complaints\Application\Exception\NotFound;
 use Complaints\Application\Repository\DocumentRepository;
 use Complaints\Domain\Document\Document;
 use Complaints\Domain\Document\DocumentType;
-use Complaints\Domain\Shared\Sha256;
 use DateTimeImmutable;
+use LogicException;
 
+/**
+ * Сформированные PDF в app_complaint_docs и trd_complaint_docs. id документа —
+ * id файла (fls_stg_entity_id); действующая версия — не удалённая строка.
+ *
+ *   жалоба               app_complaint_docs, вид 1
+ *   ответ по жалобе      app_complaint_docs, вид 3, лот жалобы с ответом
+ *   ответ по лоту        trd_complaint_docs, вид 2, лот решения
+ *   сводный документ     trd_complaint_docs, вид 1
+ */
 final class SqlDocumentRepository implements DocumentRepository
 {
-    private const COLUMNS = 'id, doc_type, test_app_complaint_id, test_complaint_answers_id, test_buy_complaint_id,'
-        . ' version, is_current, file_id, sha256, generated_by_user_id, generated_at';
+    private const APP_TYPES = [ReferenceIds::APP_DOC_COMPLAINT, ReferenceIds::APP_DOC_ANSWER];
+
+    private const TRD_TYPES = [ReferenceIds::TRD_DOC_CONSOLIDATED, ReferenceIds::TRD_DOC_LOT_ANSWER];
 
     public function __construct(
-        private readonly Database $db,
+        private readonly DocsTables $tables,
         private readonly SqlValues $values,
     ) {
     }
 
     public function current(DocumentType $type, int $ownerId): ?Document
     {
-        $row = $this->db->row(
-            sprintf('SELECT %s FROM test_complaint_documents WHERE doc_type = :type AND %s = :owner AND is_current', self::COLUMNS, self::ownerColumn($type)),
-            ['type' => $type, 'owner' => $ownerId],
-        );
+        $rows = match ($type) {
+            DocumentType::AppComplaint => $this->tables->appRows(
+                'WHERE d.app_complaint_id = :owner AND d.app_complaint_lots_id IS NULL AND d.ref_app_complaint_docs_type_id = :type'
+                . ' AND d.deleted_at IS NULL',
+                ['owner' => $ownerId, 'type' => ReferenceIds::APP_DOC_COMPLAINT],
+            ),
+            DocumentType::ConsolidatedAnswer => $this->tables->trdRows(
+                'WHERE d.trd_complaint_id = :owner AND d.trd_complaint_lots_id IS NULL AND d.ref_trd_complaint_docs_type_id = :type'
+                . ' AND d.deleted_at IS NULL',
+                ['owner' => $ownerId, 'type' => ReferenceIds::TRD_DOC_CONSOLIDATED],
+            ),
+            DocumentType::Answer => $this->currentAnswerRows($ownerId),
+        };
 
-        return $row === null ? null : $this->document($row);
+        return $rows === [] ? null : $this->document($rows[0]);
     }
 
     public function get(int $documentId): Document
     {
-        $row = $this->db->row('SELECT ' . self::COLUMNS . ' FROM test_complaint_documents WHERE id = :id', ['id' => $documentId]);
+        $row = $this->tables->fileRow($documentId, self::APP_TYPES, self::TRD_TYPES);
+        if ($row === null || $row['owner_id'] === null) {
+            throw new NotFound();
+        }
 
-        return $row === null ? throw new NotFound() : $this->document($row);
+        return $this->document($row);
     }
 
-    public function create(DocumentType $type, int $ownerId, int $fileId, Sha256 $sha256, int $userId, DateTimeImmutable $now): Document
+    public function create(DocumentType $type, int $ownerId, int $fileId, Actor $generatedBy, DateTimeImmutable $now): Document
     {
-        $owner = self::ownerColumn($type);
-        $row = $this->db->row(
-            sprintf(
-                'INSERT INTO test_complaint_documents (doc_type, %1$s, version, is_current, file_id, sha256, generated_by_user_id, generated_at)'
-                . ' SELECT CAST(:type AS varchar), CAST(:owner AS bigint), COALESCE(MAX(version), 0) + 1, true,'
-                . ' CAST(:file AS bigint), CAST(:sha256 AS varchar), CAST(:user AS bigint), CAST(:now AS timestamptz)'
-                . ' FROM test_complaint_documents WHERE %1$s = :owner_versions'
-                . ' RETURNING %2$s',
-                $owner,
-                self::COLUMNS,
-            ),
-            [
-                'type' => $type,
-                'owner' => $ownerId,
-                'file' => $fileId,
-                'sha256' => $sha256->value,
-                'user' => $userId,
-                'now' => $now,
-                'owner_versions' => $ownerId,
-            ],
-        );
+        if ($type === DocumentType::AppComplaint) {
+            $this->tables->addToComplaint($ownerId, null, ReferenceIds::APP_DOC_COMPLAINT, $fileId, $generatedBy, $now);
+        } elseif ($type === DocumentType::ConsolidatedAnswer) {
+            $this->tables->addToDecision($ownerId, null, ReferenceIds::TRD_DOC_CONSOLIDATED, $fileId, $generatedBy, $now);
+        } else {
+            $this->addAnswer($ownerId, $fileId, $generatedBy, $now);
+        }
 
-        return $this->document($row ?? throw new NotFound());
+        return $this->get($fileId);
     }
 
-    public function retire(int $documentId): void
+    public function retire(int $documentId, DateTimeImmutable $now): void
     {
-        $this->db->execute('UPDATE test_complaint_documents SET is_current = false WHERE id = :id', ['id' => $documentId]);
-    }
-
-    private static function ownerColumn(DocumentType $type): string
-    {
-        return match ($type) {
-            DocumentType::AppComplaint => 'test_app_complaint_id',
-            DocumentType::Answer => 'test_complaint_answers_id',
-            DocumentType::ConsolidatedAnswer => 'test_buy_complaint_id',
-        };
+        $this->tables->retireFile($documentId, $now);
     }
 
     /**
-     * @param array<string, mixed> $row
+     * @return list<array<string, mixed>>
+     */
+    private function currentAnswerRows(int $answerId): array
+    {
+        $place = $this->tables->answerPlace($answerId);
+        if ($place === null) {
+            return [];
+        }
+        if (!$place->isPerComplaint) {
+            return $this->tables->trdRows(
+                'WHERE d.trd_complaint_lots_id = :lot AND d.ref_trd_complaint_docs_type_id = :type AND d.deleted_at IS NULL',
+                ['lot' => $place->decisionLotId, 'type' => ReferenceIds::TRD_DOC_LOT_ANSWER],
+            );
+        }
+
+        return $place->complaintLotId === null ? [] : $this->tables->appRows(
+            'WHERE d.app_complaint_lots_id = :lot AND d.ref_app_complaint_docs_type_id = :type AND d.deleted_at IS NULL',
+            ['lot' => $place->complaintLotId, 'type' => ReferenceIds::APP_DOC_ANSWER],
+        );
+    }
+
+    private function addAnswer(int $answerId, int $fileId, Actor $generatedBy, DateTimeImmutable $now): void
+    {
+        $place = $this->tables->answerPlace($answerId) ?? throw new NotFound();
+        if (!$place->isPerComplaint) {
+            $this->tables->addToDecision($place->decisionId, $place->decisionLotId, ReferenceIds::TRD_DOC_LOT_ANSWER, $fileId, $generatedBy, $now);
+
+            return;
+        }
+        if ($place->complaintId === null || $place->complaintLotId === null) {
+            throw new LogicException(sprintf('Ответ %d не привязан к лоту жалобы: PDF ответа хранится у лота.', $answerId));
+        }
+        $this->tables->addToComplaint($place->complaintId, $place->complaintLotId, ReferenceIds::APP_DOC_ANSWER, $fileId, $generatedBy, $now);
+    }
+
+    /**
+     * @param array<string, mixed> $row строка DocsTables
      */
     private function document(array $row): Document
     {
-        $type = DocumentType::from((string) $row['doc_type']);
+        $fileId = $this->values->int($row['fls_stg_entity_id']);
+        $typeId = $this->values->int($row['type_id']);
+        $type = $row['source_table'] === DocsTables::COMPLAINT_FILES
+            ? ($typeId === ReferenceIds::APP_DOC_ANSWER ? DocumentType::Answer : DocumentType::AppComplaint)
+            : ($typeId === ReferenceIds::TRD_DOC_LOT_ANSWER ? DocumentType::Answer : DocumentType::ConsolidatedAnswer);
 
         return new Document(
-            $this->values->int($row['id']),
+            $fileId,
             $type,
-            $this->values->int($row[self::ownerColumn($type)]),
+            $this->values->int($row['owner_id']),
             $this->values->int($row['version']),
-            $this->values->bool($row['is_current']),
-            $this->values->int($row['file_id']),
-            Sha256::fromHex((string) $row['sha256']),
-            $this->values->int($row['generated_by_user_id']),
-            $this->values->moment($row['generated_at']),
+            $row['deleted_at'] === null,
+            $fileId,
+            $this->values->int($row['cruser_id']),
+            $this->values->moment($row['created_at']),
         );
     }
 }

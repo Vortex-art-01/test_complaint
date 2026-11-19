@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Complaints\Domain\Document;
 
-use Complaints\Domain\Shared\Sha256;
 use DateTimeImmutable;
 
 /**
- * Версия сформированного PDF (снимок строки test_complaint_documents).
+ * Версия сформированного PDF (строка таблиц документов app_complaint_docs, trd_complaint_docs).
+ *
+ * id документа — id файла в хранилище проекта (fls_stg_entity_id): по нему документ
+ * скачивают и подписывают. Действующая версия — не удалённая; номер версии — порядковый
+ * среди документов того же вида у того же владельца.
  */
 final readonly class Document
 {
@@ -19,7 +22,6 @@ final readonly class Document
         public int $version,
         public bool $isCurrent,
         public int $fileId,
-        public Sha256 $sha256,
         public int $generatedByUserId,
         public DateTimeImmutable $generatedAt,
     ) {

@@ -8,21 +8,22 @@ use InvalidArgumentException;
 
 /**
  * Имена таблиц и столбцов проекта, которые читает модуль (закупка, лоты,
- * заявки). Задаются в config/complaints.php → complaints_project_schema;
+ * заявки). Задаются в config/complaints.php → complaints[project_schema];
  * в SQL подставляются только после проверки, что это идентификаторы.
  *
- * Ключи test_app (id, buy_id) и test_app_lots (id, test_app_id,
- * test_buy_lots_id) зафиксированы миграцией 001 и здесь не настраиваются.
+ * Таблицы должны совпадать с REFERENCES миграций 003–004 (trd_buy,
+ * trd_buy_lot, trd_app, trd_app_lot); столбцы срока обжалования
+ * добавляет в закупку миграция 002.
  */
 final readonly class ProjectSchema
 {
     private const IDENTIFIER = '/^[a-z_][a-z0-9_]{0,62}(\.[a-z_][a-z0-9_]{0,62})?$/';
 
     private const REQUIRED = [
-        'buy' => ['table', 'number', 'name_ru', 'name_kz', 'method', 'organizer', 'published_at'],
+        'buy' => ['table', 'number', 'name_ru', 'name_kz', 'method', 'organizer', 'published_at', 'appeal_start', 'appeal_end'],
         'buy_lot' => ['table', 'buy', 'number', 'name_ru', 'name_kz'],
-        'app' => ['table', 'supplier'],
-        'app_lot' => ['table'],
+        'app' => ['table', 'buy', 'supplier'],
+        'app_lot' => ['table', 'app', 'buy_lot'],
     ];
 
     /**
@@ -94,6 +95,22 @@ final readonly class ProjectSchema
         return $this->names['buy']['published_at'];
     }
 
+    /**
+     * Первый день срока обжалования (date).
+     */
+    public function buyAppealStart(): string
+    {
+        return $this->names['buy']['appeal_start'];
+    }
+
+    /**
+     * Последний день срока обжалования включительно (date).
+     */
+    public function buyAppealEnd(): string
+    {
+        return $this->names['buy']['appeal_end'];
+    }
+
     public function lotTable(): string
     {
         return $this->names['buy_lot']['table'];
@@ -124,6 +141,11 @@ final readonly class ProjectSchema
         return $this->names['app']['table'];
     }
 
+    public function appBuy(): string
+    {
+        return $this->names['app']['buy'];
+    }
+
     public function appSupplier(): string
     {
         return $this->names['app']['supplier'];
@@ -132,5 +154,15 @@ final readonly class ProjectSchema
     public function appLotTable(): string
     {
         return $this->names['app_lot']['table'];
+    }
+
+    public function appLotApp(): string
+    {
+        return $this->names['app_lot']['app'];
+    }
+
+    public function appLotBuyLot(): string
+    {
+        return $this->names['app_lot']['buy_lot'];
     }
 }

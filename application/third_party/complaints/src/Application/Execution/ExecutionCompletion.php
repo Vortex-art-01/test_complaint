@@ -10,11 +10,9 @@ use Complaints\Application\Port\NotificationType;
 use Complaints\Application\Port\Notifier;
 use Complaints\Application\Repository\BuyComplaintRepository;
 use Complaints\Application\Repository\ProcurementRepository;
-use Complaints\Application\Repository\StatusHistoryRepository;
 use Complaints\Domain\BuyComplaint\BuyComplaint;
 use Complaints\Domain\BuyComplaint\ExecutionStatus;
 use Complaints\Domain\BuyComplaint\LotExecutionStatus;
-use Complaints\Domain\History\HistoryEntityType;
 use DateTimeImmutable;
 
 /**
@@ -24,7 +22,6 @@ final class ExecutionCompletion
 {
     public function __construct(
         private readonly BuyComplaintRepository $decisions,
-        private readonly StatusHistoryRepository $history,
         private readonly ProcurementRepository $procurement,
         private readonly Notifier $notifier,
     ) {
@@ -33,7 +30,7 @@ final class ExecutionCompletion
     /**
      * @return bool true — решение стало исполненным
      */
-    public function completeIfDone(BuyComplaint $decision, ?int $actorUserId, DateTimeImmutable $at): bool
+    public function completeIfDone(BuyComplaint $decision, DateTimeImmutable $at): bool
     {
         if ($decision->executionStatus !== ExecutionStatus::InProgress) {
             return false;
@@ -47,20 +44,10 @@ final class ExecutionCompletion
             return false;
         }
 
-        $this->history->append(
-            HistoryEntityType::BuyComplaint,
-            $decision->id,
-            ExecutionStatus::InProgress->value,
-            ExecutionStatus::Executed->value,
-            $actorUserId,
-            $at,
-            'execution_status',
-        );
-
         $buy = $this->procurement->buy($decision->buyId);
         $this->notifier->notifyOrganization($buy->organizerOrgId, new Notification(
             NotificationType::DecisionExecuted,
-            ['buy' => $buy->number, 'decision' => (string) $decision->decisionNumber],
+            ['buy' => $buy->number, 'decision' => (string) $decision->id],
             NotificationTarget::Execution,
             $decision->id,
         ));

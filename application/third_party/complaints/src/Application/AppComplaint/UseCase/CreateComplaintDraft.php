@@ -14,10 +14,7 @@ use Complaints\Application\Port\Clock;
 use Complaints\Application\Port\CurrentUserProvider;
 use Complaints\Application\Repository\AppComplaintDraft;
 use Complaints\Application\Repository\AppComplaintRepository;
-use Complaints\Application\Repository\StatusHistoryRepository;
 use Complaints\Application\Repository\TransactionRunner;
-use Complaints\Domain\AppComplaint\AppComplaintStatus;
-use Complaints\Domain\History\HistoryEntityType;
 
 /**
  * «Далее» на шаге 3: создаёт черновик жалобы и её лот.
@@ -30,7 +27,6 @@ final class CreateComplaintDraft
         private readonly AccessGuard $guard,
         private readonly FilingRules $rules,
         private readonly AppComplaintRepository $complaints,
-        private readonly StatusHistoryRepository $history,
         private readonly TransactionRunner $transactions,
         private readonly Clock $clock,
     ) {
@@ -54,7 +50,7 @@ final class CreateComplaintDraft
             $this->rules->assertHead($user->organizationId, $command->headUserId);
 
             $this->complaints->lockApplicationLot($lot->appLot->id);
-            if ($this->complaints->hasActiveComplaint($lot->appLot->id, $lot->appealPeriod->endsAt, null)) {
+            if ($this->complaints->hasActiveComplaint($lot->appLot->id, null)) {
                 throw ValidationFailed::field('app_lot_id', 'complaints_error_duplicate_complaint');
             }
 
@@ -64,18 +60,8 @@ final class CreateComplaintDraft
                 $user->organizationId,
                 $user->userId,
                 $command->headUserId,
-                $lot->protocolPublishedAt,
-                $lot->appealPeriod,
             ), $now);
             $this->complaints->addLot($complaintId, $lot->appLot, $now);
-            $this->history->append(
-                HistoryEntityType::AppComplaint,
-                $complaintId,
-                null,
-                AppComplaintStatus::Draft->value,
-                $user->userId,
-                $now,
-            );
 
             return $complaintId;
         });

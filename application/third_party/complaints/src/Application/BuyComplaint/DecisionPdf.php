@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Complaints\Application\BuyComplaint;
 
+use Complaints\Application\Access\Actor;
 use Complaints\Application\Port\FileStorage;
 use Complaints\Application\Port\OrganizationCard;
 use Complaints\Application\Port\OrganizationDirectory;
@@ -26,6 +27,7 @@ use Complaints\Domain\BuyComplaint\ReviewMethod;
 use Complaints\Domain\Document\AttachmentOwner;
 use Complaints\Domain\Document\Document;
 use Complaints\Domain\Document\DocumentType;
+use Complaints\Domain\Shared\Sha256;
 use DateTimeImmutable;
 
 /**
@@ -57,7 +59,7 @@ final class DecisionPdf
         BuyComplaintLot $lot,
         Answer $answer,
         array $complaintLots,
-        int $userId,
+        Actor $generatedBy,
         DateTimeImmutable $now,
     ): Document {
         $buy = $this->procurement->buy($decision->buyId);
@@ -88,12 +90,12 @@ final class DecisionPdf
             $answer->id,
             $this->renderer->render(DocumentType::Answer, $variables),
             $fileName,
-            $userId,
+            $generatedBy,
             $now,
         );
     }
 
-    public function consolidated(BuyComplaint $decision, int $userId, DateTimeImmutable $now): Document
+    public function consolidated(BuyComplaint $decision, Actor $generatedBy, DateTimeImmutable $now): Document
     {
         $buy = $this->procurement->buy($decision->buyId);
         $lots = [];
@@ -105,14 +107,16 @@ final class DecisionPdf
             $answers = [];
             foreach ($this->groupByAnswer($complaintLots) as $answerId => $numbers) {
                 $document = $this->documents->current(DocumentType::Answer, $answerId);
-                $file = $document === null ? '' : $this->files->describe($document->fileId)->fileName;
+                $stored = $document === null ? null : $this->files->read($document->fileId);
+                $file = $stored === null ? '' : $stored->description->fileName;
+                $sha256 = $stored === null ? '' : Sha256::ofBytes($stored->bytes)->value;
                 $answers[] = [
                     'complaints' => $numbers,
                     'text' => $this->answers->get($answerId)->text,
                     'file' => $file,
-                    'sha256' => $document?->sha256->value ?? '',
+                    'sha256' => $sha256,
                 ];
-                $registry[] = ['file' => $file, 'sha256' => $document?->sha256->value ?? ''];
+                $registry[] = ['file' => $file, 'sha256' => $sha256];
             }
 
             $lots[] = [
@@ -125,6 +129,7 @@ final class DecisionPdf
         }
 
         $variables = [
+            'number' => (string) $decision->id,
             'buy' => ['number' => $buy->number, 'name' => self::text($buy->name)],
             'authority' => $this->organization($this->directory->organization($decision->authorityOrgId)),
             'reviewer' => $this->reviewerName($decision),
@@ -140,7 +145,7 @@ final class DecisionPdf
             $decision->id,
             $this->renderer->render(DocumentType::ConsolidatedAnswer, $variables),
             'Сводный_ответ_закупка_' . $buy->number . '.pdf',
-            $userId,
+            $generatedBy,
             $now,
         );
     }

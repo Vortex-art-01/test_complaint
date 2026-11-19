@@ -14,6 +14,8 @@ final class InMemoryAnswers implements AnswerRepository
     /** @var array<int, array<string, mixed>> */
     public array $answers = [];
 
+    private int $nextId = 1;
+
     public function __construct(
         private readonly InMemoryBuyComplaints $decisions,
     ) {
@@ -21,25 +23,15 @@ final class InMemoryAnswers implements AnswerRepository
 
     public function get(int $answerId): Answer
     {
-        $row = $this->answers[$answerId] ?? null;
-        if ($row === null || $row['deleted_at'] !== null) {
-            throw new NotFound();
-        }
+        $row = $this->answers[$answerId] ?? throw new NotFound();
 
-        return new Answer($row['id'], $row['lot_id'], $row['text'], $row['created_by'], $row['created_at'], null);
+        return new Answer($row['id'], $row['lot_id'], $row['text'], $row['created_at']);
     }
 
-    public function create(int $buyComplaintLotId, string $text, int $userId, DateTimeImmutable $now): int
+    public function create(int $buyComplaintLotId, string $text, DateTimeImmutable $now): int
     {
-        $id = count($this->answers) + 1;
-        $this->answers[$id] = [
-            'id' => $id,
-            'lot_id' => $buyComplaintLotId,
-            'text' => $text,
-            'created_by' => $userId,
-            'created_at' => $now,
-            'deleted_at' => null,
-        ];
+        $id = $this->nextId++;
+        $this->answers[$id] = ['id' => $id, 'lot_id' => $buyComplaintLotId, 'text' => $text, 'created_at' => $now];
 
         return $id;
     }
@@ -49,34 +41,29 @@ final class InMemoryAnswers implements AnswerRepository
         $this->answers[$answerId]['text'] = $text;
     }
 
-    public function softDelete(int $answerId, DateTimeImmutable $now): void
-    {
-        $this->answers[$answerId]['deleted_at'] = $now;
-    }
-
-    public function softDeleteOfBuyComplaint(int $buyComplaintId, DateTimeImmutable $now): array
+    public function ofBuyComplaint(int $buyComplaintId): array
     {
         $lotIds = array_map(static fn ($lot): int => $lot->id, $this->decisions->lots($buyComplaintId));
-        $deleted = [];
-        foreach ($this->answers as $id => $row) {
-            if ($row['deleted_at'] === null && in_array($row['lot_id'], $lotIds, true)) {
-                $this->answers[$id]['deleted_at'] = $now;
-                $deleted[] = $id;
-            }
-        }
 
-        return $deleted;
+        return array_values(array_map(
+            fn (array $row): Answer => $this->get($row['id']),
+            array_filter($this->answers, static fn (array $row): bool => in_array($row['lot_id'], $lotIds, true)),
+        ));
+    }
+
+    public function deleteOfBuyComplaint(int $buyComplaintId): void
+    {
+        foreach ($this->ofBuyComplaint($buyComplaintId) as $answer) {
+            unset($this->answers[$answer->id]);
+        }
     }
 
     public function ofBuyComplaintLot(int $buyComplaintLotId): array
     {
-        $found = [];
-        foreach ($this->answers as $row) {
-            if ($row['deleted_at'] === null && $row['lot_id'] === $buyComplaintLotId) {
-                $found[] = $this->get($row['id']);
-            }
-        }
-
-        return $found;
+        return array_values(array_map(
+            fn (array $row): Answer => $this->get($row['id']),
+            array_filter($this->answers, static fn (array $row): bool => $row['lot_id'] === $buyComplaintLotId),
+        ));
     }
+
 }

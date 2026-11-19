@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Complaints\Domain\BuyComplaint;
 
 /**
- * Статус исполнения решения (test_buy_complaint.execution_status).
+ * Статус исполнения решения: часть статуса утверждённого решения (trd_complaint.status_id 5, 6, 7).
  */
 enum ExecutionStatus: string
 {

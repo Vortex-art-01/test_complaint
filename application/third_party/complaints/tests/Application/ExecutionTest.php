@@ -69,7 +69,7 @@ final class ExecutionTest extends TestCase
 
         $registry = $this->world->get(ListOrganizerDecisions::class)->execute(ExecutionStatus::InProgress, null, 1);
         self::assertSame(1, $registry->total);
-        self::assertSame('Р-125407-1', $registry->items[0]->row->decision->decisionNumber);
+        self::assertSame($decisionId, $registry->items[0]->row->decision->id);
         self::assertSame('На исполнении', $registry->items[0]->procurementStatusName);
 
         self::assertSame(
@@ -86,13 +86,14 @@ final class ExecutionTest extends TestCase
 
         $action = $this->world->gateway->cancelled[0];
         self::assertSame(World::LOT_A, $action->buyLotId);
-        self::assertSame('Р-125407-1', $action->decisionNumber);
+        self::assertSame($decisionId, $action->decisionId);
         self::assertSame('2026-10-21 14:21', $action->decisionDate->format('Y-m-d H:i'));
         self::assertSame('Комитет внутреннего государственного аудита', $action->authorityName);
         self::assertSame($this->world->documents->current(DocumentType::ConsolidatedAnswer, $decisionId)?->fileId, $action->basisFileId);
         self::assertSame([$this->world->complaints->get($this->onLotA)->number->value], $action->complaintNumbers);
         self::assertSame(World::ORGANIZER, $action->actorUserId);
         self::assertSame(LotExecutionStatus::Executed, $this->lotStatus($this->onLotA));
+        self::assertSame(World::ORGANIZER, $this->world->decisions->lot($this->steps->decisionLotOf($this->onLotA))->executionStartedByUserId);
         self::assertSame(ExecutionStatus::InProgress, $this->world->decisions->get($decisionId)->executionStatus);
 
         $this->expectExceptionObject(new StatusConflict('complaints_error_nothing_to_execute'));

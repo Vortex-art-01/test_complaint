@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Complaints\Application\AppComplaint;
 
+use Complaints\Application\Access\Actor;
 use Complaints\Application\Port\PdfRenderer;
 use Complaints\Application\Service\DocumentIssuer;
 use Complaints\Application\Service\DocumentViews;
@@ -28,14 +29,13 @@ final class ComplaintPdf
     ) {
     }
 
-    public function issue(AppComplaint $complaint, Requisites $requisites, int $userId, DateTimeImmutable $now): Document
+    public function issue(AppComplaint $complaint, Requisites $requisites, Actor $generatedBy, DateTimeImmutable $now): Document
     {
         $variables = [
             'number' => $complaint->number->value,
             'generated_at' => $this->dates->moment($now),
             'requisites' => $requisites->toArray(),
             'buy_published_at' => $this->dates->moment($requisites->buyPublishedAt),
-            'protocol_published_at' => $this->dates->moment($complaint->protocolPublishedAt),
             'appeal_period' => $this->dates->period($complaint->appealPeriod),
             'contact_phone' => (string) $complaint->contactPhone,
             'description' => (string) $complaint->description,
@@ -50,7 +50,7 @@ final class ComplaintPdf
             $complaint->id,
             $this->renderer->render(DocumentType::AppComplaint, $variables),
             'Жалоба_' . $complaint->number->value . '.pdf',
-            $userId,
+            $generatedBy,
             $now,
         );
     }

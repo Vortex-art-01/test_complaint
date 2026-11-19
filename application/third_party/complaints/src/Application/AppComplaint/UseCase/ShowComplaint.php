@@ -62,7 +62,7 @@ final class ShowComplaint
         return new ComplaintCard(
             $complaint,
             $lot,
-            $this->requisites->of($complaint, $lot),
+            $this->requisites->current($complaint, $lot),
             $this->views->attachments(AttachmentOwner::AppComplaint, $complaintId),
             $document,
             $document === null ? [] : $this->views->signatures($document->document),
@@ -91,7 +91,7 @@ final class ShowComplaint
             $this->directory->organization($decision->authorityOrgId),
             $decision->reviewerUserId === null ? '' : $this->directory->user($decision->reviewerUserId)->fullName,
             $decision->reviewPeriod,
-            (string) $decision->decisionNumber,
+            $decision->id,
             $decision->approvedAt ?? $decision->reviewPeriod->startsAt,
             $consolidated === null ? [] : $this->views->signatures($consolidated),
         );

@@ -7,7 +7,6 @@ namespace Complaints\Application\Repository;
 use Complaints\Application\Shared\LocalizedText;
 use Complaints\Domain\AppComplaint\AppComplaint;
 use Complaints\Domain\BuyComplaint\Verdict;
-use DateTimeImmutable;
 
 /**
  * Строка реестра жалоб организации.
@@ -19,7 +18,6 @@ final readonly class ComplaintListRow
         public string $buyNumber,
         public LocalizedText $buyName,
         public string $lotNumber,
-        public ?DateTimeImmutable $headSignedAt,
         public ?Verdict $verdict,
     ) {
     }

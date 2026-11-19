@@ -7,21 +7,17 @@ namespace Complaints\Domain\Signature;
 use DateTimeImmutable;
 
 /**
- * Подпись версии документа (снимок строки test_complaint_signatures).
+ * Подпись документа участником маршрута: ожидается или поставлена.
+ * Сами подписи хранятся у файла в хранилище проекта.
  */
 final readonly class Signature
 {
     public function __construct(
-        public int $id,
-        public int $documentId,
         public SignerRole $role,
         public int $signerUserId,
-        public int $signOrder,
         public SignatureStatus $status,
-        public ?int $signatureFileId,
         public ?string $certificateSubject,
         public ?DateTimeImmutable $signedAt,
-        public ?DateTimeImmutable $annulledAt,
     ) {
     }
 

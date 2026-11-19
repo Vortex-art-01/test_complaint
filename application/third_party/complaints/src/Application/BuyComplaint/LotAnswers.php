@@ -53,7 +53,6 @@ final class LotAnswers
         BuyComplaint $decision,
         BuyComplaintLot $lot,
         ?int $complaintLotId,
-        int $userId,
         DateTimeImmutable $now,
     ): int {
         $complaintLots = $this->complaintLots($lot);
@@ -67,7 +66,7 @@ final class LotAnswers
             }
         }
 
-        $answerId = $this->answers->create($lot->id, '', $userId, $now);
+        $answerId = $this->answers->create($lot->id, '', $now);
         foreach ($targets as $complaintLot) {
             $this->complaints->setAnswer($complaintLot->id, $answerId, $now);
         }

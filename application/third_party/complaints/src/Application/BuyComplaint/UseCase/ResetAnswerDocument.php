@@ -48,8 +48,8 @@ final class ResetAnswerDocument
             $lot = $this->decisions->lot($answer->buyComplaintLotId);
             $decision = $this->access->lockForReviewer($user, $lot->buyComplaintId, [BuyComplaintStatus::InReview], $now);
 
-            $this->documents->retire(DocumentType::Answer, $answerId, $user->userId, $now);
-            $this->documents->retire(DocumentType::ConsolidatedAnswer, $decision->id, $user->userId, $now);
+            $this->documents->retire(DocumentType::Answer, $answerId, $now);
+            $this->documents->retire(DocumentType::ConsolidatedAnswer, $decision->id, $now);
         });
     }
 }

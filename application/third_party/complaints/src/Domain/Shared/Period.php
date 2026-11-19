@@ -6,6 +6,7 @@ namespace Complaints\Domain\Shared;
 
 use DateInterval;
 use DateTimeImmutable;
+use DateTimeZone;
 use InvalidArgumentException;
 
 /**
@@ -23,6 +24,24 @@ final readonly class Period
         if ($startsAt >= $endsAt) {
             throw new InvalidArgumentException('Начало срока должно быть раньше окончания.');
         }
+    }
+
+    /**
+     * Срок из календарных дней включительно: с 00:00 первого дня до 00:00 дня,
+     * следующего за последним, в указанном часовом поясе.
+     *
+     * @param string $firstDay первый день, Y-m-d
+     * @param string $lastDay  последний день, Y-m-d
+     */
+    public static function ofDays(string $firstDay, string $lastDay, DateTimeZone $timeZone): self
+    {
+        $start = DateTimeImmutable::createFromFormat('!Y-m-d', $firstDay, $timeZone);
+        $last = DateTimeImmutable::createFromFormat('!Y-m-d', $lastDay, $timeZone);
+        if ($start === false || $last === false) {
+            throw new InvalidArgumentException(sprintf('Ожидались даты Y-m-d: %s, %s.', $firstDay, $lastDay));
+        }
+
+        return new self($start, $last->modify('+1 day'));
     }
 
     public function isOpenAt(DateTimeImmutable $moment): bool

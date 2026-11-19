@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Complaints\Application\BuyComplaint\UseCase;
 
+use Complaints\Application\Access\Actor;
 use Complaints\Application\BuyComplaint\DecisionAccess;
 use Complaints\Application\BuyComplaint\DecisionPdf;
 use Complaints\Application\BuyComplaint\LotAnswers;
@@ -72,8 +73,8 @@ final class FormAnswerDocument
                 }
             }
 
-            $this->pdf->answer($decision, $lot, $answer, $linked, $user->userId, $now);
-            $this->documents->retire(DocumentType::ConsolidatedAnswer, $decision->id, $user->userId, $now);
+            $this->pdf->answer($decision, $lot, $answer, $linked, Actor::of($user), $now);
+            $this->documents->retire(DocumentType::ConsolidatedAnswer, $decision->id, $now);
         });
     }
 }

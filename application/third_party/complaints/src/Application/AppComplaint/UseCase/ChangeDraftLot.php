@@ -17,7 +17,6 @@ use Complaints\Domain\AppComplaint\AppComplaintStatus;
 
 /**
  * Смена лота в сохранённом черновике — в пределах той же заявки.
- * Прежний лот помечается удалённым, срок обжалования берётся у нового лота.
  */
 final class ChangeDraftLot
 {
@@ -54,13 +53,11 @@ final class ChangeDraftLot
             }
 
             $this->complaints->lockApplicationLot($appLotId);
-            if ($this->complaints->hasActiveComplaint($appLotId, $lot->appealPeriod->endsAt, $complaintId)) {
+            if ($this->complaints->hasActiveComplaint($appLotId, $complaintId)) {
                 throw ValidationFailed::field('app_lot_id', 'complaints_error_duplicate_complaint');
             }
 
-            $this->complaints->removeLot($current->id, $now);
-            $this->complaints->addLot($complaintId, $lot->appLot, $now);
-            $this->complaints->changeAppealBasis($complaintId, $lot->protocolPublishedAt, $lot->appealPeriod, $now);
+            $this->complaints->changeLot($current->id, $lot->appLot, $now);
         });
     }
 }

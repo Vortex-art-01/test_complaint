@@ -38,7 +38,7 @@ final class ReopenDecision
 
         $this->transactions->transactional(function () use ($user, $decisionId, $now): void {
             $decision = $this->access->lockForReviewer($user, $decisionId, [BuyComplaintStatus::Recalled], $now);
-            $this->transitions->moveDecision($decision, BuyComplaintStatus::InReview, $user->userId, $now);
+            $this->transitions->moveDecision($decision, BuyComplaintStatus::InReview, $now);
         });
     }
 }

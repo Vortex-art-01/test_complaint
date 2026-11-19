@@ -18,7 +18,7 @@ use Complaints\Application\File\UseCase\GetSigningSource;
 class Complaint_files extends Complaints_controller
 {
     /**
-     * /{lang}/complaint_files/download/{document|attachment|signature}/{id}
+     * /{lang}/complaint_files/download/{document|attachment}/{id}; id — id файла хранилища
      */
     public function download($kind = '', $id = 0): void
     {

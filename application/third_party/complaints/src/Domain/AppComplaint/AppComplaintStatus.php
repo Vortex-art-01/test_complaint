@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Complaints\Domain\AppComplaint;
 
 /**
- * Статус жалобы поставщика (test_app_complaint.status).
+ * Статус жалобы поставщика (app_complaint.status_id → ref_app_complaint_st).
  */
 enum AppComplaintStatus: string
 {

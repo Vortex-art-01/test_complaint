@@ -8,10 +8,14 @@ use Complaints\Domain\BuyComplaint\Verdict;
 use DateTimeImmutable;
 
 /**
- * Лот жалобы: лот заявки поставщика, вердикт и ссылка на ответ.
+ * Лот жалобы: лот заявки поставщика, вердикт и ссылка на ответ (снимок строки app_complaint_lots).
+ * У жалобы один лот; при смене лота в черновике строка меняется.
  */
 final readonly class AppComplaintLot
 {
+    /**
+     * @param DateTimeImmutable|null $reviewedAt дата утверждения решения, в которое собрана жалоба
+     */
     public function __construct(
         public int $id,
         public int $complaintId,
@@ -22,7 +26,6 @@ final readonly class AppComplaintLot
         public ?Verdict $verdict,
         public ?int $answerId,
         public ?DateTimeImmutable $reviewedAt,
-        public ?DateTimeImmutable $deletedAt,
     ) {
     }
 

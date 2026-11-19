@@ -9,7 +9,6 @@ use Complaints\Application\Port\OrganizationDirectory;
 use Complaints\Application\Repository\AnswerRepository;
 use Complaints\Application\Repository\AttachmentRepository;
 use Complaints\Application\Repository\DocumentRepository;
-use Complaints\Application\Repository\SignatureRepository;
 use Complaints\Application\View\AnswerView;
 use Complaints\Application\View\AttachmentView;
 use Complaints\Application\View\DocumentView;
@@ -25,7 +24,7 @@ final class DocumentViews
 {
     public function __construct(
         private readonly DocumentRepository $documents,
-        private readonly SignatureRepository $signatures,
+        private readonly SignatureService $signatures,
         private readonly AttachmentRepository $attachments,
         private readonly AnswerRepository $answers,
         private readonly FileStorage $files,
@@ -50,7 +49,7 @@ final class DocumentViews
                 $signature,
                 $this->directory->user($signature->signerUserId)->fullName,
             ),
-            $this->signatures->ofDocument($document->id),
+            $this->signatures->signatures($document),
         );
     }
 

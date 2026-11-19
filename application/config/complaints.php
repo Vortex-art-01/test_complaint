@@ -9,18 +9,19 @@ defined('BASEPATH') or exit('No direct script access allowed');
 $config['complaints'] = [
     'time_zone' => 'Asia/Almaty',
 
-    // Сроки в рабочих днях: обжалование, рассмотрение, исполнение решения.
-    'appeal_working_days' => 3,
+    // Сроки в рабочих днях: рассмотрение и исполнение решения. Срок обжалования
+    // проект устанавливает в закупке при публикации протокола итогов.
     'review_working_days' => 3,
     'execution_working_days' => 2,
 
-    // ПРОЕКТ: id способов закупки, которые обжалуются в модуле (test_buy.method_id; 2 — тендер).
+    // ПРОЕКТ: id способов закупки, которые обжалуются в модуле (trd_buy.method_id; 2 — тендер).
     'complainable_method_ids' => [2],
 
     // БИН организаторов, закупки которых обжалуются в модуле (ТОО «СК-Фармация»).
     'organizer_bins' => ['090340007747'],
 
     // ПРОЕКТ: id организации уполномоченного органа, рассматривающего жалобы.
+    // Записывается в trd_complaint.crsubject_id при сборе жалоб.
     'authority_org_id' => 0,
 
     'description_max_length' => 500,
@@ -59,7 +60,7 @@ $config['complaints'] = [
     ],
 
     // Статусы заявки и лота заявки, дающие право на жалобу; пустой список — любой статус.
-    // ПРОЕКТ: имена столбцов статуса в test_app и test_app_lots.
+    // ПРОЕКТ: имена столбцов статуса в trd_app и trd_app_lot.
     'eligibility' => [
         'app_status_column' => 'status_id',
         'app_statuses' => [],
@@ -72,26 +73,30 @@ $config['complaints'] = [
     'pdf_converter' => 'project',
     'pdf_work_directory' => APPPATH . 'cache/complaints_pdf',
 
-    // ПРОЕКТ: имена таблиц и столбцов проекта, которые читает модуль.
+    // ПРОЕКТ: имена таблиц и столбцов проекта, которые читает модуль. Таблицы должны
+    // совпадать с REFERENCES миграций 003–004; столбцы срока обжалования закупки
+    // (даты, последний день включительно) добавляет миграция 002.
     'project_schema' => [
         'buy' => [
-            'table' => 'test_buy',
+            'table' => 'trd_buy',
             'number' => 'number_anno',
             'name_ru' => 'name_ru',
             'name_kz' => 'name_kz',
             'method' => 'method_id',
             'organizer' => 'organizer_org_id',
             'published_at' => 'published_at',
+            'appeal_start' => 'appeal_start_date',
+            'appeal_end' => 'appeal_end_date',
         ],
         'buy_lot' => [
-            'table' => 'test_buy_lots',
-            'buy' => 'buy_id',
+            'table' => 'trd_buy_lot',
+            'buy' => 'trd_buy_id',
             'number' => 'lot_number',
             'name_ru' => 'name_ru',
             'name_kz' => 'name_kz',
         ],
-        'app' => ['table' => 'test_app', 'supplier' => 'supplier_org_id'],
-        'app_lot' => ['table' => 'test_app_lots'],
+        'app' => ['table' => 'trd_app', 'buy' => 'trd_buy_id', 'supplier' => 'supplier_org_id'],
+        'app_lot' => ['table' => 'trd_app_lot', 'app' => 'trd_app_id', 'buy_lot' => 'trd_buy_lot_id'],
     ],
 
     // ПРОЕКТ: адреса Bootstrap 3.1.1, jQuery 1.10.2 и стилей портала (для страниц модуля

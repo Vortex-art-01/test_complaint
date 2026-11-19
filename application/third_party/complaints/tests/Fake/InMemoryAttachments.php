@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace Complaints\Tests\Fake;
 
+use Complaints\Application\Access\Actor;
 use Complaints\Application\Exception\NotFound;
 use Complaints\Application\Repository\AttachmentRepository;
 use Complaints\Domain\Document\Attachment;
 use Complaints\Domain\Document\AttachmentOwner;
 use DateTimeImmutable;
 
+/**
+ * Вложения в памяти: id вложения — id файла, как в SQL-репозитории.
+ */
 final class InMemoryAttachments implements AttachmentRepository
 {
     /** @var array<int, Attachment> */
@@ -33,12 +37,11 @@ final class InMemoryAttachments implements AttachmentRepository
         return $attachment;
     }
 
-    public function add(AttachmentOwner $owner, int $ownerId, int $fileId, int $userId, DateTimeImmutable $now): int
+    public function add(AttachmentOwner $owner, int $ownerId, int $fileId, Actor $uploadedBy, DateTimeImmutable $now): int
     {
-        $id = count($this->attachments) + 1;
-        $this->attachments[$id] = new Attachment($id, $owner, $ownerId, $fileId, $userId, $now, null);
+        $this->attachments[$fileId] = new Attachment($fileId, $owner, $ownerId, $fileId, $uploadedBy->userId, $now, null);
 
-        return $id;
+        return $fileId;
     }
 
     public function remove(int $attachmentId, DateTimeImmutable $now): void

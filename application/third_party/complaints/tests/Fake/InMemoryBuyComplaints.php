@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Complaints\Tests\Fake;
 
+use Complaints\Application\Access\Actor;
 use Complaints\Application\Exception\NotFound;
 use Complaints\Application\Repository\BuyComplaintCycle;
 use Complaints\Application\Repository\BuyComplaintRepository;
@@ -15,17 +16,29 @@ use Complaints\Domain\BuyComplaint\ExecutionStatus;
 use Complaints\Domain\BuyComplaint\LotExecutionStatus;
 use Complaints\Domain\BuyComplaint\ReviewMethod;
 use DateTimeImmutable;
+use LogicException;
 
 /**
- * Решения в памяти: повторяет условные UPDATE и уникальные ключи SQL-репозитория.
+ * Решения в памяти с теми же правилами, что SQL-репозиторий: участники
+ * маршрута отдельно от решения, исполнение лота следует из дат.
  */
 final class InMemoryBuyComplaints implements BuyComplaintRepository
 {
+    private const ROUTE_CHANGES = ['sent_for_approval_at', 'coordinated_at', 'approved_at', 'recalled_at', 'execution_status', 'execution_period'];
+
     /** @var array<int, array<string, mixed>> */
     public array $decisions = [];
 
     /** @var array<int, array<string, mixed>> */
     public array $lots = [];
+
+    /** @var array<int, array<string, Actor>> решение => роль => участник */
+    public array $members = [];
+
+    /** @var array<int, array<string, Actor>> решение => роль => кто назначил */
+    public array $assignedBy = [];
+
+    public ?InMemoryAppComplaints $complaints = null;
 
     public function get(int $id): BuyComplaint
     {
@@ -35,20 +48,22 @@ final class InMemoryBuyComplaints implements BuyComplaintRepository
             $row['id'],
             $row['buy_id'],
             $row['authority_org_id'],
-            $row['protocol_published_at'],
             $row['appeal_period'],
             $row['review_period'],
             $row['status'],
             $row['review_method'],
-            $row['reviewer_user_id'],
-            $row['coordinator_user_id'],
-            $row['approver_user_id'],
+            $this->members[$id]['reviewer']->userId ?? null,
+            $this->members[$id]['coordinator']->userId ?? null,
+            $this->members[$id]['approver']->userId ?? null,
             $row['sent_for_approval_at'],
-            $row['decision_number'],
+            $row['sent_by']?->userId,
+            $row['coordinated_at'],
             $row['approved_at'],
+            $row['recalled_at'],
+            $row['recalled_by']?->userId,
             $row['execution_status'],
             $row['execution_period'],
-            $row['executed_at'],
+            $row['execution_status'] === ExecutionStatus::Executed ? $this->lastExecutedAt($id) : null,
         );
     }
 
@@ -68,21 +83,22 @@ final class InMemoryBuyComplaints implements BuyComplaintRepository
             'id' => $id,
             'buy_id' => $decision->buyId,
             'authority_org_id' => $decision->authorityOrgId,
-            'protocol_published_at' => $decision->protocolPublishedAt,
             'appeal_period' => $decision->appealPeriod,
             'review_period' => $decision->reviewPeriod,
             'status' => BuyComplaintStatus::InReview,
             'review_method' => null,
-            'reviewer_user_id' => null,
-            'coordinator_user_id' => null,
-            'approver_user_id' => null,
             'sent_for_approval_at' => null,
-            'decision_number' => null,
+            'sent_by' => null,
+            'coordinated_at' => null,
             'approved_at' => null,
+            'recalled_at' => null,
+            'recalled_by' => null,
             'execution_status' => null,
             'execution_period' => null,
-            'executed_at' => null,
+            'lots_count' => 0,
+            'app_complaint_count' => 0,
         ];
+        $this->members[$id] = [];
 
         return $id;
     }
@@ -106,25 +122,53 @@ final class InMemoryBuyComplaints implements BuyComplaintRepository
 
         $this->decisions[$id]['status'] = $to;
         foreach ($changes as $key => $value) {
+            if (!in_array($key, [...self::ROUTE_CHANGES, 'sent_by', 'recalled_by'], true)) {
+                throw new LogicException('Неизвестное поле перехода решения: ' . $key);
+            }
             $this->decisions[$id][$key] = $value;
         }
 
         return true;
     }
 
-    public function claim(int $id, int $reviewerUserId, DateTimeImmutable $now): bool
+    public function claim(int $id, Actor $reviewer, DateTimeImmutable $now): bool
     {
-        if ($this->decisions[$id]['reviewer_user_id'] !== null) {
+        if (isset($this->members[$id]['reviewer'])) {
             return false;
         }
-        $this->decisions[$id]['reviewer_user_id'] = $reviewerUserId;
+        $this->members[$id]['reviewer'] = $reviewer;
+        $this->assignedBy[$id]['reviewer'] = $reviewer;
 
         return true;
     }
 
     public function release(int $id, DateTimeImmutable $now): void
     {
-        $this->decisions[$id]['reviewer_user_id'] = null;
+        unset($this->members[$id]['reviewer'], $this->assignedBy[$id]['reviewer']);
+    }
+
+    public function assignRoute(int $id, ?Actor $coordinator, Actor $approver, Actor $assignedBy, DateTimeImmutable $now): void
+    {
+        unset($this->members[$id]['coordinator'], $this->assignedBy[$id]['coordinator']);
+        if ($coordinator !== null) {
+            $this->members[$id]['coordinator'] = $coordinator;
+            $this->assignedBy[$id]['coordinator'] = $assignedBy;
+        }
+        $this->members[$id]['approver'] = $approver;
+        $this->assignedBy[$id]['approver'] = $assignedBy;
+    }
+
+    public function resetRoute(int $id, DateTimeImmutable $now): void
+    {
+        unset(
+            $this->members[$id]['coordinator'],
+            $this->members[$id]['approver'],
+            $this->assignedBy[$id]['coordinator'],
+            $this->assignedBy[$id]['approver'],
+        );
+        $this->decisions[$id]['sent_for_approval_at'] = null;
+        $this->decisions[$id]['sent_by'] = null;
+        $this->decisions[$id]['coordinated_at'] = null;
     }
 
     public function setReviewMethod(int $id, ReviewMethod $method, DateTimeImmutable $now): void
@@ -138,21 +182,8 @@ final class InMemoryBuyComplaints implements BuyComplaintRepository
             return false;
         }
         $this->decisions[$id]['execution_status'] = ExecutionStatus::Executed;
-        $this->decisions[$id]['executed_at'] = $now;
 
         return true;
-    }
-
-    public function lockBuy(int $buyId): void
-    {
-    }
-
-    public function countNumberedForBuy(int $buyId): int
-    {
-        return count(array_filter(
-            $this->decisions,
-            static fn (array $row): bool => $row['buy_id'] === $buyId && $row['decision_number'] !== null,
-        ));
     }
 
     public function reviewEndingBetween(DateTimeImmutable $from, DateTimeImmutable $to): array
@@ -189,10 +220,10 @@ final class InMemoryBuyComplaints implements BuyComplaintRepository
             $row['buy_complaint_id'],
             $row['buy_lot_id'],
             $row['decision_type'],
-            $row['execution_status'],
+            $this->executionStatus($row),
             $row['execution_started_at'],
+            $row['execution_started_by']?->userId,
             $row['executed_at'],
-            $row['executed_by_user_id'],
         );
     }
 
@@ -210,13 +241,29 @@ final class InMemoryBuyComplaints implements BuyComplaintRepository
             'buy_complaint_id' => $buyComplaintId,
             'buy_lot_id' => $buyLotId,
             'decision_type' => null,
-            'execution_status' => null,
+            'app_complaint_count' => 0,
             'execution_started_at' => null,
+            'execution_started_by' => null,
             'executed_at' => null,
-            'executed_by_user_id' => null,
         ];
 
         return $id;
+    }
+
+    public function refreshCounts(int $id): void
+    {
+        $complaints = $this->complaints ?? throw new LogicException('InMemoryBuyComplaints::$complaints не задан.');
+        $total = 0;
+        foreach ($this->lots as $lotId => $row) {
+            if ($row['buy_complaint_id'] !== $id) {
+                continue;
+            }
+            $count = count($complaints->lotsOfBuyComplaintLot($lotId));
+            $this->lots[$lotId]['app_complaint_count'] = $count;
+            $total += $count;
+        }
+        $this->decisions[$id]['lots_count'] = count($this->lots($id));
+        $this->decisions[$id]['app_complaint_count'] = $total;
     }
 
     public function setDecisionType(int $lotId, ?DecisionType $type, DateTimeImmutable $now): void
@@ -224,19 +271,22 @@ final class InMemoryBuyComplaints implements BuyComplaintRepository
         $this->lots[$lotId]['decision_type'] = $type;
     }
 
-    public function moveLotExecution(int $lotId, ?LotExecutionStatus $from, LotExecutionStatus $to, DateTimeImmutable $at, ?int $actorUserId): bool
+    public function moveLotExecution(int $lotId, ?LotExecutionStatus $from, LotExecutionStatus $to, DateTimeImmutable $at, ?Actor $actor): bool
     {
-        if ($this->lots[$lotId]['execution_status'] !== $from) {
+        $row = $this->lots[$lotId];
+        if ($to === LotExecutionStatus::Pending) {
+            return $from === null && $row['execution_started_at'] === null;
+        }
+        if ($this->executionStatus($row) !== $from) {
             return false;
         }
 
-        $this->lots[$lotId]['execution_status'] = $to;
-        if ($to !== LotExecutionStatus::Pending) {
-            $this->lots[$lotId]['execution_started_at'] ??= $at;
+        if ($from === LotExecutionStatus::Pending) {
+            $this->lots[$lotId]['execution_started_at'] = $at;
+            $this->lots[$lotId]['execution_started_by'] = $actor;
         }
         if ($to === LotExecutionStatus::Executed) {
             $this->lots[$lotId]['executed_at'] = $at;
-            $this->lots[$lotId]['executed_by_user_id'] = $actorUserId;
         }
 
         return true;
@@ -246,12 +296,43 @@ final class InMemoryBuyComplaints implements BuyComplaintRepository
     {
         $found = [];
         foreach ($this->lots as $row) {
-            if ($row['execution_status'] === LotExecutionStatus::Started) {
+            if ($this->executionStatus($row) === LotExecutionStatus::Started) {
                 $found[] = $this->lot($row['id']);
             }
         }
 
         return $found;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    private function executionStatus(array $row): ?LotExecutionStatus
+    {
+        $decision = $this->decisions[$row['buy_complaint_id']];
+        if ($decision['status'] !== BuyComplaintStatus::Approved
+            || $row['decision_type'] === null
+            || !$row['decision_type']->requiresExecution()) {
+            return null;
+        }
+
+        return match (true) {
+            $row['executed_at'] !== null => LotExecutionStatus::Executed,
+            $row['execution_started_at'] !== null => LotExecutionStatus::Started,
+            default => LotExecutionStatus::Pending,
+        };
+    }
+
+    private function lastExecutedAt(int $id): ?DateTimeImmutable
+    {
+        $last = null;
+        foreach ($this->lots as $row) {
+            if ($row['buy_complaint_id'] === $id && $row['executed_at'] !== null && ($last === null || $row['executed_at'] > $last)) {
+                $last = $row['executed_at'];
+            }
+        }
+
+        return $last;
     }
 
     /**

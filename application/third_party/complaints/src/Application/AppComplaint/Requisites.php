@@ -65,31 +65,6 @@ final readonly class Requisites
     }
 
     /**
-     * @param array<string, mixed> $data
-     */
-    public static function fromArray(array $data): self
-    {
-        return new self(
-            (string) $data['buy']['number'],
-            self::localized($data['buy']['name']),
-            new DateTimeImmutable((string) $data['buy']['published_at']),
-            (string) $data['lot']['number'],
-            self::localized($data['lot']['name']),
-            (string) $data['organizer']['bin'],
-            self::localized($data['organizer']['name']),
-            self::localized($data['organizer']['address']),
-            (string) $data['supplier']['bin'],
-            self::localized($data['supplier']['name']),
-            self::localized($data['supplier']['address']),
-            (string) $data['representative']['full_name'],
-            (string) $data['representative']['iin'],
-            (string) $data['representative']['email'],
-            (string) $data['head']['full_name'],
-            (string) $data['head']['position'],
-        );
-    }
-
-    /**
      * @return array{ru: string, kz: string}
      */
     private static function text(LocalizedText $text): array

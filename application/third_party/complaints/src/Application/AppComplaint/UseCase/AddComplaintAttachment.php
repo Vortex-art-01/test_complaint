@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Complaints\Application\AppComplaint\UseCase;
 
+use Complaints\Application\Access\Actor;
 use Complaints\Application\AppComplaint\DraftAccess;
 use Complaints\Application\Exception\AccessDenied;
 use Complaints\Application\Exception\StatusConflict;
@@ -52,7 +53,7 @@ final class AddComplaintAttachment
 
             $fileId = $this->files->store($file->bytes, $file->fileName, $file->mimeType, $user->userId);
 
-            return $this->attachments->add(AttachmentOwner::AppComplaint, $complaintId, $fileId, $user->userId, $now);
+            return $this->attachments->add(AttachmentOwner::AppComplaint, $complaintId, $fileId, Actor::of($user), $now);
         });
     }
 }

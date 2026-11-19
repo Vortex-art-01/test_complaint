@@ -17,7 +17,6 @@ defined('BASEPATH') or exit('No direct script access allowed');
             <tr><th><?= complaints_te('complaints_buy_published_at') ?></th><td><?= complaints_moment($requisites->buyPublishedAt) ?></td></tr>
             <tr><th><?= complaints_te('complaints_lot_number') ?></th><td><?= complaints_e($requisites->lotNumber) ?></td></tr>
             <tr><th><?= complaints_te('complaints_lot_name') ?></th><td><?= complaints_text($requisites->lotName) ?></td></tr>
-            <tr><th><?= complaints_te('complaints_protocol_published_at') ?></th><td><?= complaints_moment($complaint->protocolPublishedAt) ?></td></tr>
             <tr>
                 <th><?= complaints_te('complaints_appeal_period') ?></th>
                 <td><?= complaints_moment($complaint->appealPeriod->startsAt) ?> — <?= complaints_moment($complaint->appealPeriod->displayEndsAt()) ?></td>

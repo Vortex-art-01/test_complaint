@@ -17,8 +17,8 @@ final class StatusApplicationEligibility implements ApplicationEligibility
     private const IDENTIFIER = '/^[a-z_][a-z0-9_]{0,62}$/';
 
     /**
-     * @param list<int> $appStatuses    статусы test_app, дающие право на жалобу
-     * @param list<int> $appLotStatuses статусы test_app_lots, дающие право на жалобу
+     * @param list<int> $appStatuses    статусы заявки (trd_app), дающие право на жалобу
+     * @param list<int> $appLotStatuses статусы лота заявки (trd_app_lot), дающие право на жалобу
      */
     public function __construct(
         private readonly Database $db,

@@ -11,8 +11,6 @@ use Complaints\Application\Repository\BuyComplaintRepository;
 use Complaints\Application\Repository\ComplaintQueries;
 use Complaints\Application\Repository\DocumentRepository;
 use Complaints\Application\Repository\ProcurementRepository;
-use Complaints\Application\Repository\SignatureRepository;
-use Complaints\Application\Repository\StatusHistoryRepository;
 use Complaints\Application\Repository\TransactionRunner;
 use Complaints\Infrastructure\Persistence\Database;
 use Complaints\Infrastructure\Persistence\PdoTransactionRunner;
@@ -24,14 +22,13 @@ use Complaints\Infrastructure\Persistence\SqlBuyComplaintRepository;
 use Complaints\Infrastructure\Persistence\SqlComplaintQueries;
 use Complaints\Infrastructure\Persistence\SqlDocumentRepository;
 use Complaints\Infrastructure\Persistence\SqlProcurementRepository;
-use Complaints\Infrastructure\Persistence\SqlSignatureRepository;
-use Complaints\Infrastructure\Persistence\SqlStatusHistoryRepository;
 use Complaints\Infrastructure\Persistence\SqlValues;
 use DateTimeZone;
 use PDO;
 
 /**
- * Хранение модуля в PostgreSQL на PDO-соединении проекта.
+ * Хранение модуля в PostgreSQL на PDO-соединении проекта: таблицы trd_complaint*,
+ * app_complaint* и справочники ref_* (миграции database/complaints).
  */
 final class PersistenceBindings
 {
@@ -48,9 +45,7 @@ final class PersistenceBindings
         $container->bind(BuyComplaintRepository::class, SqlBuyComplaintRepository::class);
         $container->bind(AnswerRepository::class, SqlAnswerRepository::class);
         $container->bind(DocumentRepository::class, SqlDocumentRepository::class);
-        $container->bind(SignatureRepository::class, SqlSignatureRepository::class);
         $container->bind(AttachmentRepository::class, SqlAttachmentRepository::class);
-        $container->bind(StatusHistoryRepository::class, SqlStatusHistoryRepository::class);
         $container->bind(ComplaintQueries::class, SqlComplaintQueries::class);
     }
 }

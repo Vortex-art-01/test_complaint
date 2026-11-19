@@ -18,7 +18,6 @@ final readonly class ComplaintSettings
      */
     public function __construct(
         public DateTimeZone $timeZone,
-        public int $appealWorkingDays,
         public int $reviewWorkingDays,
         public int $executionWorkingDays,
         public array $complainableMethodIds,

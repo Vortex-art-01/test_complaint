@@ -11,5 +11,4 @@ enum FileKind: string
 {
     case Document = 'document';
     case Attachment = 'attachment';
-    case Signature = 'signature';
 }

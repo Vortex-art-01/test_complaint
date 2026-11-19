@@ -12,7 +12,8 @@ declare(strict_types=1);
  */
 ?>
 <h1><?= $doc->label('doc.consolidated_answer') ?></h1>
-<p class="number"><?= $doc->label('field.generated_at') ?>: <?= $doc->e($v['generated_at']) ?></p>
+<p class="number"><?= $doc->label('field.decision_number') ?>: <strong><?= $doc->e($v['number']) ?></strong>,
+    <?= $doc->label('field.generated_at') ?>: <?= $doc->e($v['generated_at']) ?></p>
 
 <table>
     <tr><th><?= $doc->label('field.buy_number') ?></th><td><?= $doc->e($v['buy']['number']) ?></td></tr>

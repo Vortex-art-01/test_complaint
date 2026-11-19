@@ -13,12 +13,6 @@ use DateTimeImmutable;
 interface ProcurementLotGateway
 {
     /**
-     * Дата и время публикации действующего протокола итогов по лоту;
-     * от неё модуль считает срок обжалования. null — протокола нет.
-     */
-    public function resultsProtocolPublishedAt(int $buyLotId): ?DateTimeImmutable;
-
-    /**
      * Название текущего статуса закупки на языке интерфейса — для реестра организатора.
      */
     public function procurementStatusName(int $buyId): string;

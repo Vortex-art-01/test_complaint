@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Complaints\Application\Repository;
 
 /**
- * Заявка поставщика из test_app.
+ * Заявка поставщика проекта (trd_app).
  */
 final readonly class ApplicationCard
 {

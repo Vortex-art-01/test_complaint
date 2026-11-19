@@ -95,7 +95,7 @@ final class SaveLotAnswers
             $errors->throwIfAny();
 
             $this->saveDecisionType($lot, $command->decisionType, $now);
-            $this->documents->retire(DocumentType::ConsolidatedAnswer, $decision->id, $user->userId, $now);
+            $this->documents->retire(DocumentType::ConsolidatedAnswer, $decision->id, $now);
         });
     }
 
@@ -127,7 +127,7 @@ final class SaveLotAnswers
         if ($complaintLot->answerId !== null) {
             $this->answers->updateText($complaintLot->answerId, $text, $now);
         } elseif ($text !== '') {
-            $answerId = $this->answers->create($lot->id, $text, $user->userId, $now);
+            $answerId = $this->answers->create($lot->id, $text, $now);
             $this->complaints->setAnswer($complaintLot->id, $answerId, $now);
         }
     }
@@ -169,7 +169,7 @@ final class SaveLotAnswers
         if ($answerId !== null) {
             $this->answers->updateText($answerId, $text, $now);
         } elseif ($text !== '') {
-            $answerId = $this->answers->create($lot->id, $text, $user->userId, $now);
+            $answerId = $this->answers->create($lot->id, $text, $now);
         }
         foreach ($complaintLots as $complaintLot) {
             if ($answerId !== null && $complaintLot->answerId !== $answerId) {

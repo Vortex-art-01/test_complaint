@@ -7,12 +7,12 @@ namespace Complaints\Infrastructure\Persistence;
 use Complaints\Domain\Shared\Period;
 use DateTimeImmutable;
 use DateTimeZone;
-use JsonException;
 use UnexpectedValueException;
 
 /**
  * Значения столбцов PostgreSQL в типы PHP. timestamptz приходит строкой
- * в часовом поясе сессии и переводится в часовой пояс модуля.
+ * в часовом поясе сессии и переводится в часовой пояс модуля; date —
+ * строкой Y-m-d и читается как день в часовом поясе модуля.
  */
 final class SqlValues
 {
@@ -45,6 +45,24 @@ final class SqlValues
         return $startsAt === null || $endsAt === null ? null : $this->period($startsAt, $endsAt);
     }
 
+    /**
+     * Срок из столбцов date: с первого дня по последний включительно.
+     */
+    public function daysOrNull(mixed $firstDay, mixed $lastDay): ?Period
+    {
+        return $firstDay === null || $lastDay === null
+            ? null
+            : Period::ofDays((string) $firstDay, (string) $lastDay, $this->timeZone);
+    }
+
+    /**
+     * День момента в часовом поясе модуля, Y-m-d — для сравнения со столбцами date.
+     */
+    public function dayOf(DateTimeImmutable $moment): string
+    {
+        return $moment->setTimezone($this->timeZone)->format('Y-m-d');
+    }
+
     public function int(mixed $value): int
     {
         return $this->intOrNull($value) ?? throw new UnexpectedValueException('Ожидалось число, получен NULL.');
@@ -63,20 +81,5 @@ final class SqlValues
     public function bool(mixed $value): bool
     {
         return $value === true || $value === 1 || $value === 't' || $value === 'true' || $value === '1';
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     *
-     * @throws JsonException
-     */
-    public function jsonOrNull(mixed $value): ?array
-    {
-        if ($value === null) {
-            return null;
-        }
-        $decoded = json_decode((string) $value, true, 512, JSON_THROW_ON_ERROR);
-
-        return is_array($decoded) ? $decoded : throw new UnexpectedValueException('Ожидался JSON-объект.');
     }
 }

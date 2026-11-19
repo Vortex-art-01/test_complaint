@@ -69,9 +69,6 @@ final class FileAccessTest extends TestCase
 
         $this->world->collect();
         self::assertTrue($this->canDownload(World::REVIEWER, FileKind::Document, $document));
-        $signature = $this->world->signatures->ofDocument($document)[0]->id;
-        self::assertTrue($this->canDownload(World::REVIEWER, FileKind::Signature, $signature));
-        self::assertFalse($this->canDownload(World::SUPPLIER2_AUTHOR, FileKind::Signature, $signature));
     }
 
     public function testSupplierGetsOwnAnswerOnlyAfterApprovalAndNeverTheConsolidatedDocument(): void
@@ -90,14 +87,11 @@ final class FileAccessTest extends TestCase
         $this->steps->send($decisionId);
         $this->steps->approve($decisionId);
         $consolidated = $this->documentOf(DocumentType::ConsolidatedAnswer, $decisionId);
-        $approverSignature = $this->world->signatures->ofDocument($consolidated)[2]->id;
 
         self::assertTrue($this->canDownload(World::AUTHOR, FileKind::Document, $ownAnswer));
         self::assertFalse($this->canDownload(World::AUTHOR, FileKind::Document, $foreignAnswer));
         self::assertFalse($this->canDownload(World::AUTHOR, FileKind::Document, $consolidated));
-        self::assertFalse($this->canDownload(World::AUTHOR, FileKind::Signature, $approverSignature));
         self::assertTrue($this->canDownload(World::ORGANIZER, FileKind::Document, $consolidated));
-        self::assertTrue($this->canDownload(World::ORGANIZER, FileKind::Signature, $approverSignature));
 
         $this->world->actAs(World::AUTHOR);
         $answer = $this->world->get(ShowComplaint::class)->execute($own)->answer;

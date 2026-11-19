@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace Complaints\Domain\BuyComplaint;
 
 /**
- * Статус решения по жалобам на закупку (test_buy_complaint.status).
+ * Статус решения по жалобам на закупку (trd_complaint.status_id → ref_trd_complaint_st;
+ * утверждённому соответствуют три строки — по статусу исполнения).
  */
 enum BuyComplaintStatus: string
 {

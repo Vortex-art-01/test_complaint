@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Complaints\Application\Execution\UseCase;
 
 use Complaints\Application\Access\AccessGuard;
+use Complaints\Application\Access\Actor;
 use Complaints\Application\Exception\AccessDenied;
 use Complaints\Application\Exception\IntegrationFailure;
 use Complaints\Application\Exception\StatusConflict;
@@ -69,9 +70,9 @@ final class CancelDecisionLots
 
             foreach ($lots as $lot) {
                 $this->lotGateway->cancelLot($this->lotActions->basis($decision, $lot, $user->userId));
-                $this->transitions->moveLotExecution($lot, LotExecutionStatus::Executed, $user->userId, $now);
+                $this->transitions->moveLotExecution($lot, LotExecutionStatus::Executed, $now, Actor::of($user));
             }
-            $this->completion->completeIfDone($decision, $user->userId, $now);
+            $this->completion->completeIfDone($decision, $now);
 
             return count($lots);
         });

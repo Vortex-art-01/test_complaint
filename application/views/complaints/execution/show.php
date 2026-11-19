@@ -45,7 +45,7 @@ $id = $decision->id;
             <div class="panel-body">
                 <?php $this->load->view('complaints/partials/document', ['document' => $overview->consolidated]); ?>
                 <br>
-                <?php $this->load->view('complaints/partials/signatures', ['signatures' => $overview->signatures, 'downloadable' => true]); ?>
+                <?php $this->load->view('complaints/partials/signatures', ['signatures' => $overview->signatures]); ?>
             </div>
         </div>
 

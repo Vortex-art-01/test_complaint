@@ -56,7 +56,6 @@ final readonly class ModuleConfig
         return new self(
             new ComplaintSettings(
                 $timeZone,
-                self::positive($config, 'appeal_working_days'),
                 self::positive($config, 'review_working_days'),
                 self::positive($config, 'execution_working_days'),
                 self::ints($config, 'complainable_method_ids'),

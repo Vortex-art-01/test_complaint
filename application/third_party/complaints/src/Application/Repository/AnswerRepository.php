@@ -8,32 +8,31 @@ use Complaints\Application\Exception\NotFound;
 use Complaints\Domain\BuyComplaint\Answer;
 use DateTimeImmutable;
 
-/**
- * Ответы уполномоченного органа: test_complaint_answers.
- */
 interface AnswerRepository
 {
     /**
-     * @throws NotFound ответа нет или он удалён
+     * @throws NotFound
      */
     public function get(int $answerId): Answer;
 
-    public function create(int $buyComplaintLotId, string $text, int $userId, DateTimeImmutable $now): int;
+    public function create(int $buyComplaintLotId, string $text, DateTimeImmutable $now): int;
 
     public function updateText(int $answerId, string $text, DateTimeImmutable $now): void;
 
-    public function softDelete(int $answerId, DateTimeImmutable $now): void;
-
     /**
-     * Мягко удаляет все ответы решения.
+     * Ответы всех лотов решения.
      *
-     * @return list<int> id удалённых ответов
+     * @return list<Answer>
      */
-    public function softDeleteOfBuyComplaint(int $buyComplaintId, DateTimeImmutable $now): array;
+    public function ofBuyComplaint(int $buyComplaintId): array;
 
     /**
-     * Действующие ответы лота решения.
-     *
+     * Удаляет ответы решения — при смене способа ответа. Ссылки лотов жалоб
+     * на ответы нужно снять до вызова.
+     */
+    public function deleteOfBuyComplaint(int $buyComplaintId): void;
+
+    /**
      * @return list<Answer>
      */
     public function ofBuyComplaintLot(int $buyComplaintLotId): array;

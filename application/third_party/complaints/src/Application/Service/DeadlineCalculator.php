@@ -26,14 +26,6 @@ final class DeadlineCalculator
     }
 
     /**
-     * Срок обжалования после публикации протокола итогов.
-     */
-    public function appealPeriod(DateTimeImmutable $protocolPublishedAt): Period
-    {
-        return $this->periodAfterDayOf($protocolPublishedAt, $this->settings->appealWorkingDays);
-    }
-
-    /**
      * Срок рассмотрения после последнего дня срока обжалования.
      */
     public function reviewPeriod(Period $appealPeriod): Period

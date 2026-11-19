@@ -19,7 +19,8 @@ use DateTimeImmutable;
 final readonly class ComplaintAnswer
 {
     /**
-     * @param list<SignatureView> $signers подписанты сводного документа; файлы подписей поставщику не выдаются
+     * @param int                 $decisionId номер решения
+     * @param list<SignatureView> $signers подписанты сводного документа
      */
     public function __construct(
         public Verdict $verdict,
@@ -28,7 +29,7 @@ final readonly class ComplaintAnswer
         public OrganizationCard $authority,
         public string $reviewerName,
         public Period $reviewPeriod,
-        public string $decisionNumber,
+        public int $decisionId,
         public DateTimeImmutable $approvedAt,
         public array $signers,
     ) {

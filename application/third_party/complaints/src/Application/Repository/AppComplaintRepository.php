@@ -9,12 +9,8 @@ use Complaints\Domain\AppComplaint\AppComplaint;
 use Complaints\Domain\AppComplaint\AppComplaintLot;
 use Complaints\Domain\AppComplaint\AppComplaintStatus;
 use Complaints\Domain\BuyComplaint\Verdict;
-use Complaints\Domain\Shared\Period;
 use DateTimeImmutable;
 
-/**
- * Жалобы поставщиков и их лоты: test_app_complaint, test_app_complaint_lots.
- */
 interface AppComplaintRepository
 {
     /**
@@ -29,26 +25,16 @@ interface AppComplaintRepository
      */
     public function lock(int $complaintId): AppComplaint;
 
-    /**
-     * Создаёт черновик; номер «Ж-…» присваивает БД.
-     */
     public function create(AppComplaintDraft $complaint, DateTimeImmutable $now): int;
 
     public function updateContent(int $complaintId, ?string $contactPhone, ?string $description, DateTimeImmutable $now): void;
 
     public function changeHead(int $complaintId, int $headUserId, DateTimeImmutable $now): void;
 
-    public function changeAppealBasis(int $complaintId, DateTimeImmutable $protocolPublishedAt, Period $appealPeriod, DateTimeImmutable $now): void;
-
-    /**
-     * @param array<string, mixed>|null $snapshot реквизиты на момент формирования PDF; null — снять фиксацию
-     */
-    public function saveRequisitesSnapshot(int $complaintId, ?array $snapshot, DateTimeImmutable $now): void;
-
     /**
      * Условный переход: UPDATE … WHERE id = :id AND status = :from AND deleted_at IS NULL.
      *
-     * @param array{submitted_at?: DateTimeImmutable, withdrawn_at?: DateTimeImmutable, buy_complaint_id?: int} $changes
+     * @param array{submitted_at?: DateTimeImmutable, submitted_by_user_id?: int, buy_complaint_id?: int} $changes
      * @return bool false — статус уже другой
      */
     public function transition(int $complaintId, AppComplaintStatus $from, AppComplaintStatus $to, DateTimeImmutable $now, array $changes = []): bool;
@@ -67,24 +53,24 @@ interface AppComplaintRepository
     public function lockApplicationLot(int $appLotId): void;
 
     /**
-     * Есть ли неудалённая жалоба на лот заявки с тем же окончанием срока обжалования.
+     * Есть ли на лот заявки неудалённая жалоба, ещё не собранная в решение.
      */
-    public function hasActiveComplaint(int $appLotId, DateTimeImmutable $appealEndsAt, ?int $exceptComplaintId): bool;
+    public function hasActiveComplaint(int $appLotId, ?int $exceptComplaintId): bool;
 
     /**
-     * Пары (закупка, окончание срока) с поданными жалобами, чей срок
-     * обжалования закончился не позже момента.
+     * Закупки с поданными и ещё не собранными жалобами, срок обжалования
+     * которых закончился не позже момента.
      *
      * @return list<CollectionBatch>
      */
     public function collectionBatches(DateTimeImmutable $appealEndedBy): array;
 
     /**
-     * Поданные жалобы пары, заблокированные до конца транзакции.
+     * Поданные и ещё не собранные жалобы закупки, заблокированные до конца транзакции.
      *
      * @return list<AppComplaint>
      */
-    public function lockSubmittedOfBatch(int $buyId, DateTimeImmutable $appealEndsAt): array;
+    public function lockSubmittedOfBuy(int $buyId): array;
 
     /**
      * Жалобы, собранные в решение.
@@ -94,7 +80,7 @@ interface AppComplaintRepository
     public function ofBuyComplaint(int $buyComplaintId): array;
 
     /**
-     * Единственный неудалённый лот жалобы.
+     * Лот жалобы.
      *
      * @throws NotFound
      */
@@ -107,7 +93,10 @@ interface AppComplaintRepository
 
     public function addLot(int $complaintId, ApplicationLotCard $appLot, DateTimeImmutable $now): int;
 
-    public function removeLot(int $lotId, DateTimeImmutable $now): void;
+    /**
+     * Перенос лота черновика на другой лот той же заявки.
+     */
+    public function changeLot(int $lotId, ApplicationLotCard $appLot, DateTimeImmutable $now): void;
 
     /**
      * @return list<AppComplaintLot>
@@ -129,9 +118,4 @@ interface AppComplaintRepository
      * Снимает ссылки на ответы у всех лотов жалоб решения.
      */
     public function clearAnswers(int $buyComplaintId, DateTimeImmutable $now): void;
-
-    /**
-     * Отмечает лоты жалоб решения рассмотренными (reviewed_at).
-     */
-    public function markReviewed(int $buyComplaintId, DateTimeImmutable $now): void;
 }

@@ -46,7 +46,7 @@ final class DeleteComplaint
                 throw new StatusConflict();
             }
 
-            $this->documents->retire(DocumentType::AppComplaint, $complaintId, $user->userId, $now);
+            $this->documents->retire(DocumentType::AppComplaint, $complaintId, $now);
             if (!$this->complaints->softDelete($complaintId, $now)) {
                 throw new StatusConflict();
             }

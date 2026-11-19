@@ -42,18 +42,6 @@ final class FileAccess
         };
     }
 
-    /**
-     * Файлы подписей: жалобы — как сама жалоба; сводного документа — только орган и организатор.
-     */
-    public function canReadSignatures(CurrentUser $user, Document $document): bool
-    {
-        return match ($document->type) {
-            DocumentType::AppComplaint => $this->canReadComplaint($user, $document->ownerId),
-            DocumentType::ConsolidatedAnswer => $this->guard->canViewDecision($user, $this->decisions->get($document->ownerId)),
-            DocumentType::Answer => false,
-        };
-    }
-
     public function canReadAttachment(CurrentUser $user, Attachment $attachment): bool
     {
         return $attachment->owner === AttachmentOwner::AppComplaint

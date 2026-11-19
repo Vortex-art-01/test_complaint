@@ -12,21 +12,30 @@ use Complaints\Application\Repository\CollectionBatch;
 use Complaints\Domain\AppComplaint\AppComplaint;
 use Complaints\Domain\AppComplaint\AppComplaintLot;
 use Complaints\Domain\AppComplaint\AppComplaintStatus;
-use Complaints\Domain\AppComplaint\ComplaintNumber;
 use Complaints\Domain\BuyComplaint\Verdict;
 use Complaints\Domain\Shared\Period;
 use DateTimeImmutable;
+use LogicException;
 
 /**
- * Жалобы в памяти: повторяет условные UPDATE и правила выборок SQL-репозитория.
+ * Жалобы в памяти. Срок обжалования жалобы — срок закупки, а после сбора —
+ * срок, сохранённый в решении, как в SQL-репозитории.
  */
 final class InMemoryAppComplaints implements AppComplaintRepository
 {
+    private const TRANSITION_CHANGES = ['submitted_at', 'submitted_by_user_id', 'buy_complaint_id'];
+
     /** @var array<int, array<string, mixed>> */
     public array $complaints = [];
 
     /** @var array<int, array<string, mixed>> */
     public array $lots = [];
+
+    public function __construct(
+        private readonly InMemoryProcurement $procurement,
+        private readonly InMemoryBuyComplaints $decisions,
+    ) {
+    }
 
     public function get(int $complaintId): AppComplaint
     {
@@ -48,7 +57,6 @@ final class InMemoryAppComplaints implements AppComplaintRepository
         $id = count($this->complaints) + 1;
         $this->complaints[$id] = [
             'id' => $id,
-            'number' => sprintf('Ж-%06d', $id),
             'buy_id' => $complaint->buyId,
             'app_id' => $complaint->appId,
             'buy_complaint_id' => null,
@@ -57,12 +65,9 @@ final class InMemoryAppComplaints implements AppComplaintRepository
             'head_user_id' => $complaint->headUserId,
             'contact_phone' => null,
             'description' => null,
-            'snapshot' => null,
-            'protocol_published_at' => $complaint->protocolPublishedAt,
-            'appeal_period' => $complaint->appealPeriod,
             'status' => AppComplaintStatus::Draft,
             'submitted_at' => null,
-            'withdrawn_at' => null,
+            'submitted_by_user_id' => null,
             'created_at' => $now,
             'deleted_at' => null,
         ];
@@ -81,17 +86,6 @@ final class InMemoryAppComplaints implements AppComplaintRepository
         $this->complaints[$complaintId]['head_user_id'] = $headUserId;
     }
 
-    public function changeAppealBasis(int $complaintId, DateTimeImmutable $protocolPublishedAt, Period $appealPeriod, DateTimeImmutable $now): void
-    {
-        $this->complaints[$complaintId]['protocol_published_at'] = $protocolPublishedAt;
-        $this->complaints[$complaintId]['appeal_period'] = $appealPeriod;
-    }
-
-    public function saveRequisitesSnapshot(int $complaintId, ?array $snapshot, DateTimeImmutable $now): void
-    {
-        $this->complaints[$complaintId]['snapshot'] = $snapshot === null ? null : json_decode((string) json_encode($snapshot), true);
-    }
-
     public function transition(int $complaintId, AppComplaintStatus $from, AppComplaintStatus $to, DateTimeImmutable $now, array $changes = []): bool
     {
         $row = $this->complaints[$complaintId] ?? null;
@@ -100,10 +94,11 @@ final class InMemoryAppComplaints implements AppComplaintRepository
         }
 
         $row['status'] = $to;
-        foreach (['submitted_at', 'withdrawn_at', 'buy_complaint_id'] as $key) {
-            if (array_key_exists($key, $changes)) {
-                $row[$key] = $changes[$key];
+        foreach ($changes as $key => $value) {
+            if (!in_array($key, self::TRANSITION_CHANGES, true)) {
+                throw new LogicException('Неизвестное поле перехода жалобы: ' . $key);
             }
+            $row[$key] = $value;
         }
         $this->complaints[$complaintId] = $row;
 
@@ -125,15 +120,14 @@ final class InMemoryAppComplaints implements AppComplaintRepository
     {
     }
 
-    public function hasActiveComplaint(int $appLotId, DateTimeImmutable $appealEndsAt, ?int $exceptComplaintId): bool
+    public function hasActiveComplaint(int $appLotId, ?int $exceptComplaintId): bool
     {
         foreach ($this->lots as $lot) {
             $complaint = $this->complaints[$lot['complaint_id']];
-            if ($lot['deleted_at'] === null
-                && $lot['app_lot_id'] === $appLotId
+            if ($lot['app_lot_id'] === $appLotId
                 && $complaint['deleted_at'] === null
-                && $complaint['id'] !== $exceptComplaintId
-                && $complaint['appeal_period']->endsAt == $appealEndsAt) {
+                && $complaint['buy_complaint_id'] === null
+                && $complaint['id'] !== $exceptComplaintId) {
                 return true;
             }
         }
@@ -143,26 +137,21 @@ final class InMemoryAppComplaints implements AppComplaintRepository
 
     public function collectionBatches(DateTimeImmutable $appealEndedBy): array
     {
-        $groups = [];
+        $batches = [];
         foreach ($this->complaints as $row) {
-            if ($row['status'] !== AppComplaintStatus::Submitted || $row['deleted_at'] !== null || $row['appeal_period']->endsAt > $appealEndedBy) {
+            if ($row['status'] !== AppComplaintStatus::Submitted || $row['deleted_at'] !== null || $row['buy_complaint_id'] !== null) {
                 continue;
             }
-            $key = $row['buy_id'] . '|' . $row['appeal_period']->endsAt->getTimestamp();
-            $groups[$key][] = $row;
+            $period = $this->procurement->buy($row['buy_id'])->appealPeriod;
+            if ($period !== null && $period->endsAt <= $appealEndedBy) {
+                $batches[$row['buy_id']] = new CollectionBatch($row['buy_id'], $period);
+            }
         }
 
-        $batches = [];
-        foreach ($groups as $rows) {
-            $starts = min(array_map(static fn (array $r) => $r['appeal_period']->startsAt, $rows));
-            $published = max(array_map(static fn (array $r) => $r['protocol_published_at'], $rows));
-            $batches[] = new CollectionBatch($rows[0]['buy_id'], new Period($starts, $rows[0]['appeal_period']->endsAt), $published);
-        }
-
-        return $batches;
+        return array_values($batches);
     }
 
-    public function lockSubmittedOfBatch(int $buyId, DateTimeImmutable $appealEndsAt): array
+    public function lockSubmittedOfBuy(int $buyId): array
     {
         return array_values(array_map(
             fn (array $row): AppComplaint => $this->complaint($row),
@@ -170,8 +159,8 @@ final class InMemoryAppComplaints implements AppComplaintRepository
                 $this->complaints,
                 static fn (array $row): bool => $row['status'] === AppComplaintStatus::Submitted
                     && $row['deleted_at'] === null
-                    && $row['buy_id'] === $buyId
-                    && $row['appeal_period']->endsAt == $appealEndsAt,
+                    && $row['buy_complaint_id'] === null
+                    && $row['buy_id'] === $buyId,
             ),
         ));
     }
@@ -180,14 +169,17 @@ final class InMemoryAppComplaints implements AppComplaintRepository
     {
         return array_values(array_map(
             fn (array $row): AppComplaint => $this->complaint($row),
-            array_filter($this->complaints, static fn (array $row): bool => $row['buy_complaint_id'] === $buyComplaintId),
+            array_filter(
+                $this->complaints,
+                static fn (array $row): bool => $row['buy_complaint_id'] === $buyComplaintId && $row['deleted_at'] === null,
+            ),
         ));
     }
 
     public function lotOf(int $complaintId): AppComplaintLot
     {
         foreach ($this->lots as $lot) {
-            if ($lot['complaint_id'] === $complaintId && $lot['deleted_at'] === null) {
+            if ($lot['complaint_id'] === $complaintId) {
                 return $this->lot($lot['id']);
             }
         }
@@ -198,18 +190,20 @@ final class InMemoryAppComplaints implements AppComplaintRepository
     public function lot(int $lotId): AppComplaintLot
     {
         $row = $this->lots[$lotId] ?? throw new NotFound();
+        $complaint = $this->complaints[$row['complaint_id']];
 
         return new AppComplaintLot(
             $row['id'],
             $row['complaint_id'],
-            $row['app_id'],
+            $complaint['app_id'],
             $row['app_lot_id'],
             $row['buy_lot_id'],
             $row['buy_complaint_lot_id'],
             $row['verdict'],
             $row['answer_id'],
-            $row['reviewed_at'],
-            $row['deleted_at'],
+            $complaint['status'] === AppComplaintStatus::Reviewed && $complaint['buy_complaint_id'] !== null
+                ? $this->decisions->get($complaint['buy_complaint_id'])->approvedAt
+                : null,
         );
     }
 
@@ -219,22 +213,20 @@ final class InMemoryAppComplaints implements AppComplaintRepository
         $this->lots[$id] = [
             'id' => $id,
             'complaint_id' => $complaintId,
-            'app_id' => $appLot->appId,
             'app_lot_id' => $appLot->id,
             'buy_lot_id' => $appLot->buyLotId,
             'buy_complaint_lot_id' => null,
             'verdict' => null,
             'answer_id' => null,
-            'reviewed_at' => null,
-            'deleted_at' => null,
         ];
 
         return $id;
     }
 
-    public function removeLot(int $lotId, DateTimeImmutable $now): void
+    public function changeLot(int $lotId, ApplicationLotCard $appLot, DateTimeImmutable $now): void
     {
-        $this->lots[$lotId]['deleted_at'] = $now;
+        $this->lots[$lotId]['app_lot_id'] = $appLot->id;
+        $this->lots[$lotId]['buy_lot_id'] = $appLot->buyLotId;
     }
 
     public function lotsOfBuyComplaintLot(int $buyComplaintLotId): array
@@ -269,13 +261,6 @@ final class InMemoryAppComplaints implements AppComplaintRepository
         }
     }
 
-    public function markReviewed(int $buyComplaintId, DateTimeImmutable $now): void
-    {
-        foreach ($this->lotsOfBuyComplaint($buyComplaintId) as $lot) {
-            $this->lots[$lot->id]['reviewed_at'] = $now;
-        }
-    }
-
     /**
      * @param callable(array<string, mixed>): bool $condition
      * @return list<AppComplaintLot>
@@ -284,7 +269,7 @@ final class InMemoryAppComplaints implements AppComplaintRepository
     {
         $found = [];
         foreach ($this->lots as $lot) {
-            if ($lot['deleted_at'] === null && $condition($lot)) {
+            if ($this->complaints[$lot['complaint_id']]['deleted_at'] === null && $condition($lot)) {
                 $found[] = $this->lot($lot['id']);
             }
         }
@@ -299,7 +284,6 @@ final class InMemoryAppComplaints implements AppComplaintRepository
     {
         return new AppComplaint(
             $row['id'],
-            ComplaintNumber::fromString($row['number']),
             $row['buy_id'],
             $row['app_id'],
             $row['buy_complaint_id'],
@@ -308,14 +292,25 @@ final class InMemoryAppComplaints implements AppComplaintRepository
             $row['head_user_id'],
             $row['contact_phone'],
             $row['description'],
-            $row['snapshot'],
-            $row['protocol_published_at'],
-            $row['appeal_period'],
+            $this->appealPeriod($row),
             $row['status'],
             $row['submitted_at'],
-            $row['withdrawn_at'],
+            $row['submitted_by_user_id'],
             $row['created_at'],
             $row['deleted_at'],
         );
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    private function appealPeriod(array $row): Period
+    {
+        if ($row['buy_complaint_id'] !== null) {
+            return $this->decisions->get($row['buy_complaint_id'])->appealPeriod;
+        }
+
+        return $this->procurement->buy($row['buy_id'])->appealPeriod
+            ?? throw new LogicException('У закупки нет срока обжалования.');
     }
 }

@@ -4,56 +4,47 @@ declare(strict_types=1);
 
 namespace Complaints\Application\Service;
 
+use Complaints\Application\Access\Actor;
 use Complaints\Application\Port\FileStorage;
 use Complaints\Application\Repository\DocumentRepository;
-use Complaints\Application\Repository\SignatureRepository;
 use Complaints\Domain\Document\Document;
 use Complaints\Domain\Document\DocumentType;
-use Complaints\Domain\Shared\Sha256;
 use DateTimeImmutable;
 
 /**
- * Версии документов. Любое изменение содержимого — новая версия:
- * прежняя перестаёт действовать, её подписи аннулируются.
+ * Выпуск новой версии PDF: прежняя версия перестаёт действовать вместе
+ * с подписями её файла, новый файл становится действующей версией.
  */
 final class DocumentIssuer
 {
     public function __construct(
         private readonly DocumentRepository $documents,
-        private readonly SignatureRepository $signatures,
         private readonly FileStorage $files,
     ) {
     }
 
-    /**
-     * Сохраняет PDF и делает его действующей версией документа владельца.
-     */
     public function issue(
         DocumentType $type,
         int $ownerId,
         string $pdfBytes,
         string $fileName,
-        int $userId,
+        Actor $generatedBy,
         DateTimeImmutable $now,
     ): Document {
-        $this->retire($type, $ownerId, $userId, $now);
-        $fileId = $this->files->store($pdfBytes, $fileName, 'application/pdf', $userId);
+        $this->retire($type, $ownerId, $now);
+        $fileId = $this->files->store($pdfBytes, $fileName, 'application/pdf', $generatedBy->userId);
 
-        return $this->documents->create($type, $ownerId, $fileId, Sha256::ofBytes($pdfBytes), $userId, $now);
+        return $this->documents->create($type, $ownerId, $fileId, $generatedBy, $now);
     }
 
     /**
-     * Снимает действующую версию с действия и аннулирует её подписи.
-     * Ничего не делает, если документ не сформирован.
+     * Снимает действующую версию с действия. Ничего не делает, если документ не сформирован.
      */
-    public function retire(DocumentType $type, int $ownerId, ?int $userId, DateTimeImmutable $now): void
+    public function retire(DocumentType $type, int $ownerId, DateTimeImmutable $now): void
     {
         $current = $this->documents->current($type, $ownerId);
-        if ($current === null) {
-            return;
+        if ($current !== null) {
+            $this->documents->retire($current->id, $now);
         }
-
-        $this->signatures->annulAll($current->id, $userId, $now);
-        $this->documents->retire($current->id);
     }
 }

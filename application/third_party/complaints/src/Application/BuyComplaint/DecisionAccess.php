@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Complaints\Application\BuyComplaint;
 
 use Complaints\Application\Access\AccessGuard;
+use Complaints\Application\Access\Actor;
 use Complaints\Application\Access\CurrentUser;
 use Complaints\Application\Exception\AccessDenied;
 use Complaints\Application\Exception\StatusConflict;
@@ -40,7 +41,7 @@ final class DecisionAccess
         $this->assertStatus($decision, $statuses);
 
         if (!$decision->hasReviewer()) {
-            if (!$this->decisions->claim($decisionId, $user->userId, $now)) {
+            if (!$this->decisions->claim($decisionId, Actor::of($user), $now)) {
                 throw new StatusConflict();
             }
             $decision = $this->decisions->lock($decisionId);

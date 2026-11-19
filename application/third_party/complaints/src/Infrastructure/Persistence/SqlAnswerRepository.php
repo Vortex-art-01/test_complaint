@@ -9,9 +9,12 @@ use Complaints\Application\Repository\AnswerRepository;
 use Complaints\Domain\BuyComplaint\Answer;
 use DateTimeImmutable;
 
+/**
+ * Ответы уполномоченного органа: app_complaint_answer.
+ */
 final class SqlAnswerRepository implements AnswerRepository
 {
-    private const COLUMNS = 'a.id, a.test_buy_complaint_lots_id, a.answer_text, a.created_by_user_id, a.created_at, a.deleted_at';
+    private const COLUMNS = 'a.id, a.trd_complaint_lots_id, a.answer, a.created_at';
 
     public function __construct(
         private readonly Database $db,
@@ -21,61 +24,55 @@ final class SqlAnswerRepository implements AnswerRepository
 
     public function get(int $answerId): Answer
     {
-        $row = $this->db->row(
-            'SELECT ' . self::COLUMNS . ' FROM test_complaint_answers a WHERE a.id = :id AND a.deleted_at IS NULL',
-            ['id' => $answerId],
-        );
+        $row = $this->db->row('SELECT ' . self::COLUMNS . ' FROM app_complaint_answer a WHERE a.id = :id', ['id' => $answerId]);
 
         return $row === null ? throw new NotFound() : $this->answer($row);
     }
 
-    public function create(int $buyComplaintLotId, string $text, int $userId, DateTimeImmutable $now): int
+    public function create(int $buyComplaintLotId, string $text, DateTimeImmutable $now): int
     {
         return $this->values->int($this->db->value(
-            'INSERT INTO test_complaint_answers (test_buy_complaint_lots_id, answer_text, created_by_user_id, created_at, updated_at)'
-            . ' VALUES (:lot, :text, :user, :created, :updated) RETURNING id',
-            ['lot' => $buyComplaintLotId, 'text' => $text, 'user' => $userId, 'created' => $now, 'updated' => $now],
+            'INSERT INTO app_complaint_answer (trd_complaint_lots_id, answer, created_at) VALUES (:lot, :text, :created) RETURNING id',
+            ['lot' => $buyComplaintLotId, 'text' => $text, 'created' => $now],
         ));
     }
 
     public function updateText(int $answerId, string $text, DateTimeImmutable $now): void
     {
-        $this->db->execute(
-            'UPDATE test_complaint_answers SET answer_text = :text, updated_at = :now WHERE id = :id AND deleted_at IS NULL',
-            ['text' => $text, 'now' => $now, 'id' => $answerId],
+        $this->db->execute('UPDATE app_complaint_answer SET answer = :text WHERE id = :id', ['text' => $text, 'id' => $answerId]);
+    }
+
+    public function ofBuyComplaint(int $buyComplaintId): array
+    {
+        return $this->many(
+            'JOIN trd_complaint_lots tl ON tl.id = a.trd_complaint_lots_id WHERE tl.trd_complaint_id = :decision ORDER BY a.id',
+            ['decision' => $buyComplaintId],
         );
     }
 
-    public function softDelete(int $answerId, DateTimeImmutable $now): void
+    public function deleteOfBuyComplaint(int $buyComplaintId): void
     {
         $this->db->execute(
-            'UPDATE test_complaint_answers SET deleted_at = :deleted, updated_at = :updated WHERE id = :id AND deleted_at IS NULL',
-            ['deleted' => $now, 'updated' => $now, 'id' => $answerId],
+            'DELETE FROM app_complaint_answer a USING trd_complaint_lots tl'
+            . ' WHERE tl.id = a.trd_complaint_lots_id AND tl.trd_complaint_id = :decision',
+            ['decision' => $buyComplaintId],
         );
-    }
-
-    public function softDeleteOfBuyComplaint(int $buyComplaintId, DateTimeImmutable $now): array
-    {
-        $rows = $this->db->rows(
-            'UPDATE test_complaint_answers a SET deleted_at = :deleted, updated_at = :updated'
-            . ' FROM test_buy_complaint_lots bl'
-            . ' WHERE bl.id = a.test_buy_complaint_lots_id AND bl.test_buy_complaint_id = :decision AND a.deleted_at IS NULL'
-            . ' RETURNING a.id',
-            ['deleted' => $now, 'updated' => $now, 'decision' => $buyComplaintId],
-        );
-
-        return array_map(fn (array $row): int => $this->values->int($row['id']), $rows);
     }
 
     public function ofBuyComplaintLot(int $buyComplaintLotId): array
     {
+        return $this->many('WHERE a.trd_complaint_lots_id = :lot ORDER BY a.id', ['lot' => $buyComplaintLotId]);
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     * @return list<Answer>
+     */
+    private function many(string $condition, array $params): array
+    {
         return array_map(
             fn (array $row): Answer => $this->answer($row),
-            $this->db->rows(
-                'SELECT ' . self::COLUMNS . ' FROM test_complaint_answers a'
-                . ' WHERE a.test_buy_complaint_lots_id = :lot AND a.deleted_at IS NULL ORDER BY a.id',
-                ['lot' => $buyComplaintLotId],
-            ),
+            $this->db->rows('SELECT ' . self::COLUMNS . ' FROM app_complaint_answer a ' . $condition, $params),
         );
     }
 
@@ -86,11 +83,9 @@ final class SqlAnswerRepository implements AnswerRepository
     {
         return new Answer(
             $this->values->int($row['id']),
-            $this->values->int($row['test_buy_complaint_lots_id']),
-            (string) $row['answer_text'],
-            $this->values->int($row['created_by_user_id']),
+            $this->values->int($row['trd_complaint_lots_id']),
+            (string) $row['answer'],
             $this->values->moment($row['created_at']),
-            $this->values->momentOrNull($row['deleted_at']),
         );
     }
 }

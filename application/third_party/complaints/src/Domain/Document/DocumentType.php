@@ -5,16 +5,16 @@ declare(strict_types=1);
 namespace Complaints\Domain\Document;
 
 /**
- * Тип сформированного документа (test_complaint_documents.doc_type).
+ * Тип сформированного документа (вид строки app_complaint_docs или trd_complaint_docs).
  */
 enum DocumentType: string
 {
-    /** Жалоба поставщика; владелец — test_app_complaint. */
+    /** Жалоба поставщика; владелец — app_complaint. */
     case AppComplaint = 'app_complaint';
 
-    /** Ответ на жалобу; владелец — test_complaint_answers. */
+    /** Ответ на жалобу; владелец — app_complaint_answer. */
     case Answer = 'answer';
 
-    /** Сводный документ ответов; владелец — test_buy_complaint. */
+    /** Сводный документ ответов; владелец — trd_complaint. */
     case ConsolidatedAnswer = 'consolidated_answer';
 }

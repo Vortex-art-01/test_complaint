@@ -25,6 +25,7 @@ use Complaints\Application\Exception\AccessDenied;
 use Complaints\Application\Exception\StatusConflict;
 use Complaints\Application\Exception\ValidationFailed;
 use Complaints\Application\Port\NotificationType;
+use Complaints\Application\Service\SignatureService;
 use Complaints\Domain\AppComplaint\AppComplaintStatus;
 use Complaints\Domain\BuyComplaint\BuyComplaintStatus;
 use Complaints\Domain\BuyComplaint\DecisionType;
@@ -33,11 +34,11 @@ use Complaints\Domain\BuyComplaint\LotExecutionStatus;
 use Complaints\Domain\BuyComplaint\ReviewMethod;
 use Complaints\Domain\BuyComplaint\Verdict;
 use Complaints\Domain\Document\DocumentType;
-use Complaints\Domain\History\HistoryEntityType;
+use Complaints\Domain\Shared\Period;
 use Complaints\Domain\Signature\SignatureStatus;
 use Complaints\Tests\Support\ReviewSteps;
 use Complaints\Tests\Support\World;
-use DateTimeImmutable;
+use DateTimeZone;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -84,7 +85,7 @@ final class ReviewFlowTest extends TestCase
         $document = $this->world->documents->current(DocumentType::ConsolidatedAnswer, self::DECISION);
         self::assertNotNull($document);
 
-        return array_map(static fn ($signature) => $signature->status, $this->world->signatures->ofDocument($document->id));
+        return array_map(static fn ($signature) => $signature->status, $this->world->get(SignatureService::class)->signatures($document));
     }
 
     public function testFirstReviewerActionClaimsDecisionUntilApproverReleasesIt(): void
@@ -168,11 +169,15 @@ final class ReviewFlowTest extends TestCase
 
         $decision = $this->world->decisions->get(self::DECISION);
         self::assertSame(BuyComplaintStatus::Approved, $decision->status);
-        self::assertSame('Р-125407-1', $decision->decisionNumber);
+        self::assertSame(World::REVIEWER, $decision->sentByUserId);
+        self::assertSame(World::REVIEWER, $this->world->decisions->assignedBy[self::DECISION]['approver']->userId);
+        self::assertSame(World::AUTHORITY, $this->world->decisions->members[self::DECISION]['coordinator']->organizationId);
+        self::assertNotNull($decision->sentForApprovalAt);
+        self::assertNotNull($decision->coordinatedAt);
+        self::assertSame('2026-10-21 14:21', $decision->approvedAt?->format('Y-m-d H:i'));
         self::assertSame(ExecutionStatus::InProgress, $decision->executionStatus);
         self::assertSame('2026-10-23 23:59', $decision->executionPeriod?->displayEndsAt()->format('Y-m-d H:i'));
         self::assertSame(array_fill(0, 3, SignatureStatus::Signed), $this->consolidatedSignatureStatuses());
-        self::assertSame(['in_review', 'on_coordination', 'on_approval', 'approved'], $this->world->history->trail(HistoryEntityType::BuyComplaint, self::DECISION));
 
         foreach ([$this->first, $this->second, $this->third] as $id) {
             self::assertSame(AppComplaintStatus::Reviewed, $this->world->complaints->get($id)->status);
@@ -240,7 +245,7 @@ final class ReviewFlowTest extends TestCase
 
         self::assertNull($this->steps->answerOf($this->first));
         self::assertNull($this->steps->answerOf($this->second));
-        self::assertNotNull($this->world->answers->answers[$answerId]['deleted_at']);
+        self::assertArrayNotHasKey($answerId, $this->world->answers->answers);
         self::assertNull($this->world->documents->current(DocumentType::Answer, $answerId));
         self::assertSame(Verdict::Satisfied, $this->world->complaints->lotOf($this->first)->verdict);
         $lotId = $this->steps->decisionLotOf($this->first);
@@ -292,7 +297,7 @@ final class ReviewFlowTest extends TestCase
         }
 
         self::assertSame(BuyComplaintStatus::InReview, $this->world->decisions->get(self::DECISION)->status);
-        self::assertSame([], $this->consolidatedSignatureStatuses());
+        self::assertSame([SignatureStatus::Pending], $this->consolidatedSignatureStatuses(), 'Ждём только подпись рассматривающего.');
     }
 
     public function testWithoutCoordinatorDecisionGoesStraightToApprover(): void
@@ -331,29 +336,37 @@ final class ReviewFlowTest extends TestCase
         $this->world->get(ApproveDecision::class)->execute(self::DECISION, base64_encode('cms'));
     }
 
-    public function testRecallAnnulsSignaturesAndResendingNeedsFreshVersion(): void
+    public function testRecallRetiresSignedVersionAndResetsRoute(): void
     {
         $this->answerEverything();
         $this->steps->send(self::DECISION);
 
         $this->world->get(RecallDecision::class)->execute(self::DECISION);
 
-        self::assertSame(BuyComplaintStatus::Recalled, $this->world->decisions->get(self::DECISION)->status);
-        self::assertSame(array_fill(0, 3, SignatureStatus::Annulled), $this->consolidatedSignatureStatuses());
+        $decision = $this->world->decisions->get(self::DECISION);
+        self::assertSame(BuyComplaintStatus::Recalled, $decision->status);
+        self::assertSame(World::REVIEWER, $decision->recalledByUserId);
+        self::assertNotNull($decision->recalledAt);
+        self::assertNull($decision->coordinatorUserId);
+        self::assertNull($decision->approverUserId);
+        self::assertNull($decision->sentForApprovalAt);
+        self::assertNull($decision->coordinatedAt);
+        self::assertNull($this->world->documents->current(DocumentType::ConsolidatedAnswer, self::DECISION));
         self::assertSame([World::COORDINATOR, World::APPROVER], $this->world->notifier->recipientsOf(NotificationType::DecisionRecalled->value));
 
         try {
             $this->world->get(SendDecisionForApproval::class)->execute(
                 new SendDecisionCommand(self::DECISION, World::COORDINATOR, World::APPROVER, base64_encode('cms')),
             );
-            self::fail('Подписанную версию повторно не отправить.');
+            self::fail('После отзыва нужен новый сводный документ.');
         } catch (ValidationFailed $error) {
-            self::assertSame('complaints_error_consolidated_outdated', $error->messageKey());
+            self::assertSame('complaints_error_consolidated_missing', $error->messageKey());
         }
 
         $this->steps->send(self::DECISION);
         self::assertSame(2, $this->world->documents->current(DocumentType::ConsolidatedAnswer, self::DECISION)?->version);
         self::assertSame(BuyComplaintStatus::OnCoordination, $this->world->decisions->get(self::DECISION)->status);
+        self::assertSame([SignatureStatus::Signed, SignatureStatus::Pending, SignatureStatus::Pending], $this->consolidatedSignatureStatuses());
     }
 
     public function testRecalledDecisionReopensForChanges(): void
@@ -384,16 +397,15 @@ final class ReviewFlowTest extends TestCase
         $this->world->get(RecallDecision::class)->execute(self::DECISION);
     }
 
-    public function testNextReviewCycleOfTheBuyGetsSuffixedDecisionNumber(): void
+    public function testNextAppealPeriodOfTheBuyGetsItsOwnDecision(): void
     {
         $this->steps->decide(
             [$this->first => Verdict::Satisfied, $this->second => Verdict::Rejected, $this->third => Verdict::Rejected],
             [World::LOT_A => DecisionType::ReviseResults],
         );
-        self::assertSame('Р-125407-1', $this->world->decisions->get(self::DECISION)->decisionNumber);
 
-        // После пересмотра итогов по лоту А опубликован новый протокол — новый срок обжалования.
-        $this->world->gateway->protocols[World::LOT_A] = new DateTimeImmutable('2026-10-26 18:00:00+05:00');
+        // После пересмотра итогов опубликован новый протокол — проект установил новый срок обжалования.
+        $this->world->procurement->setAppealPeriod(World::BUY, Period::ofDays('2026-10-27', '2026-10-29', new DateTimeZone('Asia/Almaty')));
         $this->world->at('2026-10-27 10:00:00+05:00');
         $again = $this->world->submitted(World::SUPPLIER2_AUTHOR, World::APP2_LOT_A, World::SUPPLIER2_HEAD);
         $this->world->at('2026-10-30 00:10:00+05:00');
@@ -403,6 +415,8 @@ final class ReviewFlowTest extends TestCase
         self::assertNotSame(self::DECISION, $next);
         $this->steps->decide([$again => Verdict::Rejected]);
 
-        self::assertSame('Р-125407-1/2', $this->world->decisions->get($next)->decisionNumber);
+        self::assertSame(BuyComplaintStatus::Approved, $this->world->decisions->get($next)->status);
+        self::assertSame('2026-10-29 23:59', $this->world->decisions->get($next)->appealPeriod->displayEndsAt()->format('Y-m-d H:i'));
+        self::assertSame('2026-10-19 23:59', $this->world->complaints->get($this->first)->appealPeriod->displayEndsAt()->format('Y-m-d H:i'), 'Собранная жалоба хранит срок своего решения.');
     }
 }

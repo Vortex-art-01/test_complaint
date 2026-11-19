@@ -153,7 +153,12 @@ final class ViewsTest extends TestCase
         $this->world->actAs(World::AUTHOR);
         $answered = self::render('complaints/supplier/show', ['card' => $this->world->get(ShowComplaint::class)->execute($first)]);
         self::assertStringContainsString('Ответ уполномоченного органа', $answered);
-        self::assertStringContainsString('№ Р-125407-1', $answered);
+        self::assertStringContainsString('№ ' . $decisionId . ' от ', $answered);
+
+        $this->world->actAs(World::REVIEWER);
+        $approved = self::render('complaints/review/show', ['overview' => $this->world->get(ShowDecision::class)->execute($decisionId)]);
+        self::assertStringContainsString('№ ' . $decisionId . ' от ', $approved);
+        self::assertStringNotContainsString('.p7s', $approved);
     }
 
     public function testPerLotReviewAndOrganizerScreens(): void

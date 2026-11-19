@@ -62,7 +62,7 @@ final class RemoveAnswerAttachment
             $this->lotAnswers->assertNotFormed($answer->id, 'file');
 
             $this->attachments->remove($attachmentId, $now);
-            $this->documents->retire(DocumentType::ConsolidatedAnswer, $decision->id, $user->userId, $now);
+            $this->documents->retire(DocumentType::ConsolidatedAnswer, $decision->id, $now);
         });
     }
 }

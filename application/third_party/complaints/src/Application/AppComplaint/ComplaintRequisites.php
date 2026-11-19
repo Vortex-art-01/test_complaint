@@ -10,8 +10,8 @@ use Complaints\Domain\AppComplaint\AppComplaint;
 use Complaints\Domain\AppComplaint\AppComplaintLot;
 
 /**
- * Реквизиты жалобы: для черновика — текущие из справочников,
- * после формирования PDF — зафиксированные в requisites_snapshot.
+ * Реквизиты жалобы из справочников проекта. На момент подписи они
+ * зафиксированы в PDF жалобы.
  */
 final class ComplaintRequisites
 {
@@ -21,15 +21,8 @@ final class ComplaintRequisites
     ) {
     }
 
-    public function of(AppComplaint $complaint, AppComplaintLot $lot): Requisites
-    {
-        return $complaint->requisitesSnapshot !== null
-            ? Requisites::fromArray($complaint->requisitesSnapshot)
-            : $this->current($complaint, $lot);
-    }
-
     /**
-     * Текущие реквизиты из справочников проекта.
+     * Реквизиты из справочников проекта.
      */
     public function current(AppComplaint $complaint, AppComplaintLot $lot): Requisites
     {

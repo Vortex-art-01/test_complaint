@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Complaints\Application\BuyComplaint\UseCase;
 
+use Complaints\Application\Access\Actor;
 use Complaints\Application\BuyComplaint\DecisionAccess;
 use Complaints\Application\BuyComplaint\DecisionCompleteness;
 use Complaints\Application\BuyComplaint\DecisionPdf;
@@ -53,7 +54,7 @@ final class FormConsolidatedDocument
             }
 
             $this->completeness->assertComplete($decisionId);
-            $this->pdf->consolidated($decision, $user->userId, $now);
+            $this->pdf->consolidated($decision, Actor::of($user), $now);
         });
     }
 }

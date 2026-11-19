@@ -49,8 +49,8 @@ final class CompleteLotRevisions
                     return 0;
                 }
 
-                $this->transitions->moveLotExecution($fresh, LotExecutionStatus::Executed, null, $completedAt);
-                $this->completion->completeIfDone($decision, null, $completedAt);
+                $this->transitions->moveLotExecution($fresh, LotExecutionStatus::Executed, $completedAt, null);
+                $this->completion->completeIfDone($decision, $completedAt);
 
                 return 1;
             });

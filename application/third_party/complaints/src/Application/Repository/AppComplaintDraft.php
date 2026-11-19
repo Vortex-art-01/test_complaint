@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace Complaints\Application\Repository;
 
-use Complaints\Domain\Shared\Period;
-use DateTimeImmutable;
-
 /**
- * Данные нового черновика жалобы.
+ * Черновик жалобы к созданию: закупка, заявка, организация, автор и руководитель-подписант.
  */
 final readonly class AppComplaintDraft
 {
@@ -18,8 +15,6 @@ final readonly class AppComplaintDraft
         public int $supplierOrgId,
         public int $authorUserId,
         public int $headUserId,
-        public DateTimeImmutable $protocolPublishedAt,
-        public Period $appealPeriod,
     ) {
     }
 }

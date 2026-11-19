@@ -37,7 +37,7 @@ $answer = $card->answer;
         </table>
 
         <h4><?= complaints_te('complaints_signatures') ?></h4>
-        <?php $this->load->view('complaints/partials/signatures', ['signatures' => $card->signatures, 'downloadable' => true]); ?>
+        <?php $this->load->view('complaints/partials/signatures', ['signatures' => $card->signatures]); ?>
 
         <div class="complaints-actions">
             <?php if ($card->allows(ComplaintAction::Sign) && $card->document !== null) : ?>
@@ -82,7 +82,7 @@ $answer = $card->answer;
                         <tr><th><?= complaints_te('complaints_decision_type') ?></th><td><?= complaints_label('decision_type', $answer->decisionType) ?></td></tr>
                         <tr>
                             <th><?= complaints_te('complaints_decision') ?></th>
-                            <td><?= complaints_te('complaints_decision_number_date', ['number' => $answer->decisionNumber, 'date' => complaints_moment($answer->approvedAt)]) ?></td>
+                            <td><?= complaints_te('complaints_decision_number_date', ['number' => $answer->decisionId, 'date' => complaints_moment($answer->approvedAt)]) ?></td>
                         </tr>
                         <tr><th><?= complaints_te('complaints_authority') ?></th><td><?= complaints_text($answer->authority->name) ?></td></tr>
                         <tr><th><?= complaints_te('complaints_reviewer') ?></th><td><?= complaints_e($answer->reviewerName) ?></td></tr>

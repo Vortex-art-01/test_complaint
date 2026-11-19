@@ -130,5 +130,26 @@ final class ModuleContainerTest extends TestCase
         }
         self::assertSame([], array_diff_key($russian, $kazakh), 'Строки есть только на русском.');
     }
+
+    public function testEveryViewTextHasRussianAndKazakhText(): void
+    {
+        $russian = ModuleContainer::language(self::application() . '/language/russian/complaints_lang.php');
+        $kazakh = ModuleContainer::language(self::application() . '/language/kazakh/complaints_lang.php');
+
+        // Ключи целиком; префиксы вида 'complaints_signer_role_' . $role дополняются в коде.
+        $keys = [];
+        $views = self::application() . '/views/complaints';
+        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($views)) as $file) {
+            if ($file->getExtension() === 'php' && preg_match_all("/complaints_te\\('(complaints_[a-z0-9_]*[a-z0-9])'/", (string) file_get_contents($file->getPathname()), $found) > 0) {
+                array_push($keys, ...$found[1]);
+            }
+        }
+
+        self::assertGreaterThan(100, count(array_unique($keys)));
+        foreach (array_unique($keys) as $key) {
+            self::assertArrayHasKey($key, $russian, 'Нет русской строки ' . $key);
+            self::assertArrayHasKey($key, $kazakh, 'Нет казахской строки ' . $key);
+        }
+    }
 }
 

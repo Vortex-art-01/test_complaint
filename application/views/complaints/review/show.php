@@ -102,7 +102,7 @@ $consolidated = $overview->consolidated;
             <div class="panel-body">
                 <?php $this->load->view('complaints/partials/document', ['document' => $consolidated]); ?>
                 <br>
-                <?php $this->load->view('complaints/partials/signatures', ['signatures' => $overview->signatures, 'downloadable' => true]); ?>
+                <?php $this->load->view('complaints/partials/signatures', ['signatures' => $overview->signatures]); ?>
 
                 <?php if ($overview->allows(DecisionAction::FormConsolidated)) : ?>
                     <button type="button" class="btn btn-default"

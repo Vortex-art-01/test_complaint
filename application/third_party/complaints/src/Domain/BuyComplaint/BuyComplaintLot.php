@@ -7,7 +7,10 @@ namespace Complaints\Domain\BuyComplaint;
 use DateTimeImmutable;
 
 /**
- * Решение по лоту закупки и его исполнение (снимок строки test_buy_complaint_lots).
+ * Решение по лоту закупки и его исполнение (снимок строки trd_complaint_lots).
+ *
+ * Статус исполнения следует из дат: организатор начал исполнение
+ * (отмена или запуск пересмотра) — executionStartedAt, лот исполнен — executedAt.
  */
 final readonly class BuyComplaintLot
 {
@@ -18,8 +21,8 @@ final readonly class BuyComplaintLot
         public ?DecisionType $decisionType,
         public ?LotExecutionStatus $executionStatus,
         public ?DateTimeImmutable $executionStartedAt,
+        public ?int $executionStartedByUserId,
         public ?DateTimeImmutable $executedAt,
-        public ?int $executedByUserId,
     ) {
     }
 

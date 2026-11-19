@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Complaints\Application\BuyComplaint\UseCase;
 
+use Complaints\Application\Access\Actor;
 use Complaints\Application\Access\CurrentUser;
 use Complaints\Application\Access\ModuleRole;
 use Complaints\Application\BuyComplaint\DecisionAccess;
@@ -23,7 +24,7 @@ use Complaints\Application\Port\Notifier;
 use Complaints\Application\Port\OrganizationDirectory;
 use Complaints\Application\Repository\DocumentRepository;
 use Complaints\Application\Repository\ProcurementRepository;
-use Complaints\Application\Repository\SignatureRepository;
+use Complaints\Application\Repository\BuyComplaintRepository;
 use Complaints\Application\Repository\TransactionRunner;
 use Complaints\Application\Service\SignatureService;
 use Complaints\Application\Service\StatusTransitioner;
@@ -35,7 +36,8 @@ use Complaints\Domain\Signature\SignerRole;
 /**
  * Подпись сводного документа рассматривающим и отправка по маршруту:
  * in_review | recalled -> on_coordination (есть согласующий) | on_approval.
- * После отзыва документ формируется заново: подписи прежней версии аннулированы.
+ * Назначает согласующего и утверждающего, фиксирует, кто и когда отправил.
+ * После отзыва сводный документ формируется заново — новым файлом без подписей.
  */
 final class SendDecisionForApproval
 {
@@ -46,7 +48,7 @@ final class SendDecisionForApproval
         private readonly AuthorityResolver $authorities,
         private readonly OrganizationDirectory $directory,
         private readonly DocumentRepository $documents,
-        private readonly SignatureRepository $signatureRows,
+        private readonly BuyComplaintRepository $decisions,
         private readonly SignatureService $signatures,
         private readonly StatusTransitioner $transitions,
         private readonly ProcurementRepository $procurement,
@@ -79,31 +81,26 @@ final class SendDecisionForApproval
 
             $document = $this->documents->current(DocumentType::ConsolidatedAnswer, $decision->id)
                 ?? throw ValidationFailed::field('form', 'complaints_error_consolidated_missing');
-            if ($this->signatureRows->ofDocument($document->id) !== []) {
+            if ($this->signatures->hasSignatures($document)) {
                 throw ValidationFailed::field('form', 'complaints_error_consolidated_outdated');
             }
 
-            $route = [SignerRole::Reviewer->value => $user->userId];
-            if ($command->coordinatorUserId !== null) {
-                $route[SignerRole::Coordinator->value] = $command->coordinatorUserId;
-            }
-            $route[SignerRole::Approver->value] = $command->approverUserId;
-            $this->signatures->requestRoute($document, $route, $now);
-
-            $authority = $this->directory->organization($decision->authorityOrgId);
-            $this->signatures->sign($document, SignerRole::Reviewer, $user->userId, $command->signatureBase64, $authority->bin, $now);
-
             $hasCoordinator = $command->coordinatorUserId !== null;
+            $this->decisions->assignRoute(
+                $decision->id,
+                $hasCoordinator ? $this->member((int) $command->coordinatorUserId) : null,
+                $this->member($command->approverUserId),
+                Actor::of($user),
+                $now,
+            );
+            $authority = $this->directory->organization($decision->authorityOrgId);
+            $this->signatures->sign($document, SignerRole::Reviewer, Actor::of($user), $command->signatureBase64, $authority->bin, $now);
+
             $this->transitions->moveDecision(
                 $decision,
                 $hasCoordinator ? BuyComplaintStatus::OnCoordination : BuyComplaintStatus::OnApproval,
-                $user->userId,
                 $now,
-                [
-                    'coordinator_user_id' => $command->coordinatorUserId,
-                    'approver_user_id' => $command->approverUserId,
-                    'sent_for_approval_at' => $now,
-                ],
+                ['sent_for_approval_at' => $now, 'sent_by' => Actor::of($user)],
             );
 
             $this->notifier->notifyUser($command->coordinatorUserId ?? $command->approverUserId, new Notification(
@@ -139,6 +136,14 @@ final class SendDecisionForApproval
         }
 
         $errors->throwIfAny();
+    }
+
+    /**
+     * Участник маршрута и его организация.
+     */
+    private function member(int $userId): Actor
+    {
+        return new Actor($userId, $this->directory->user($userId)->organizationId);
     }
 
     /**

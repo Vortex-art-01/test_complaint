@@ -7,7 +7,7 @@ namespace Complaints\Domain\AppComplaint;
 use InvalidArgumentException;
 
 /**
- * Номер жалобы «Ж-000001». Присваивает БД (последовательность).
+ * Номер жалобы для людей: «Ж-000015». Отдельно не хранится — строится из id.
  */
 final readonly class ComplaintNumber
 {
@@ -16,13 +16,13 @@ final readonly class ComplaintNumber
     ) {
     }
 
-    public static function fromString(string $value): self
+    public static function of(int $complaintId): self
     {
-        if (preg_match('/^Ж-\d{6,}$/u', $value) !== 1) {
-            throw new InvalidArgumentException(sprintf('Неверный номер жалобы: %s.', $value));
+        if ($complaintId < 1) {
+            throw new InvalidArgumentException(sprintf('Неверный id жалобы: %d.', $complaintId));
         }
 
-        return new self($value);
+        return new self('Ж-' . str_pad((string) $complaintId, 6, '0', STR_PAD_LEFT));
     }
 
     public function __toString(): string

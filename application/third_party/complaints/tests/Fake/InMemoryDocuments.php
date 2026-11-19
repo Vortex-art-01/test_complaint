@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace Complaints\Tests\Fake;
 
+use Complaints\Application\Access\Actor;
 use Complaints\Application\Exception\NotFound;
 use Complaints\Application\Repository\DocumentRepository;
 use Complaints\Domain\Document\Document;
 use Complaints\Domain\Document\DocumentType;
-use Complaints\Domain\Shared\Sha256;
 use DateTimeImmutable;
 use LogicException;
 
 /**
- * Версии документов в памяти; как и в БД, у владельца одна действующая версия.
+ * Документы в памяти: id документа — id файла, как в SQL-репозитории.
  */
 final class InMemoryDocuments implements DocumentRepository
 {
@@ -36,10 +36,13 @@ final class InMemoryDocuments implements DocumentRepository
         return $this->documents[$documentId] ?? throw new NotFound();
     }
 
-    public function create(DocumentType $type, int $ownerId, int $fileId, Sha256 $sha256, int $userId, DateTimeImmutable $now): Document
+    public function create(DocumentType $type, int $ownerId, int $fileId, Actor $generatedBy, DateTimeImmutable $now): Document
     {
         if ($this->current($type, $ownerId) !== null) {
             throw new LogicException('Нарушен уникальный индекс действующей версии.');
+        }
+        if (isset($this->documents[$fileId])) {
+            throw new LogicException('Файл уже привязан к документу.');
         }
 
         $version = 1;
@@ -49,12 +52,10 @@ final class InMemoryDocuments implements DocumentRepository
             }
         }
 
-        $id = count($this->documents) + 1;
-
-        return $this->documents[$id] = new Document($id, $type, $ownerId, $version, true, $fileId, $sha256, $userId, $now);
+        return $this->documents[$fileId] = new Document($fileId, $type, $ownerId, $version, true, $fileId, $generatedBy->userId, $now);
     }
 
-    public function retire(int $documentId): void
+    public function retire(int $documentId, DateTimeImmutable $now): void
     {
         $document = $this->documents[$documentId];
         $this->documents[$documentId] = new Document(
@@ -64,7 +65,6 @@ final class InMemoryDocuments implements DocumentRepository
             $document->version,
             false,
             $document->fileId,
-            $document->sha256,
             $document->generatedByUserId,
             $document->generatedAt,
         );

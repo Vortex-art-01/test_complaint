@@ -8,7 +8,11 @@ use Complaints\Domain\Shared\Period;
 use DateTimeImmutable;
 
 /**
- * Решение по жалобам на закупку: один цикл обжалования (снимок строки test_buy_complaint).
+ * Решение по жалобам на закупку: один цикл обжалования (снимок строки trd_complaint).
+ * Номер решения — его id. Участники маршрута хранятся в trd_complaint_member.
+ *
+ * Даты маршрута: sentForApprovalAt — рассматривающий отправил решение (с согласующим
+ * и без), coordinatedAt — согласующий подписал и передал утверждающему.
  */
 final readonly class BuyComplaint
 {
@@ -16,7 +20,6 @@ final readonly class BuyComplaint
         public int $id,
         public int $buyId,
         public int $authorityOrgId,
-        public DateTimeImmutable $protocolPublishedAt,
         public Period $appealPeriod,
         public Period $reviewPeriod,
         public BuyComplaintStatus $status,
@@ -25,8 +28,11 @@ final readonly class BuyComplaint
         public ?int $coordinatorUserId,
         public ?int $approverUserId,
         public ?DateTimeImmutable $sentForApprovalAt,
-        public ?string $decisionNumber,
+        public ?int $sentByUserId,
+        public ?DateTimeImmutable $coordinatedAt,
         public ?DateTimeImmutable $approvedAt,
+        public ?DateTimeImmutable $recalledAt,
+        public ?int $recalledByUserId,
         public ?ExecutionStatus $executionStatus,
         public ?Period $executionPeriod,
         public ?DateTimeImmutable $executedAt,
@@ -46,6 +52,14 @@ final readonly class BuyComplaint
     public function hasCoordinator(): bool
     {
         return $this->coordinatorUserId !== null;
+    }
+
+    /**
+     * С какого момента решение у утверждающего: после согласования или сразу после отправки.
+     */
+    public function onApprovalSince(): ?DateTimeImmutable
+    {
+        return $this->coordinatedAt ?? ($this->hasCoordinator() ? null : $this->sentForApprovalAt);
     }
 
     public function isReviewOverdueAt(DateTimeImmutable $moment): bool

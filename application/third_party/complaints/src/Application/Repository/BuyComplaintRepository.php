@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Complaints\Application\Repository;
 
+use Complaints\Application\Access\Actor;
 use Complaints\Application\Exception\NotFound;
 use Complaints\Domain\BuyComplaint\BuyComplaint;
 use Complaints\Domain\BuyComplaint\BuyComplaintLot;
@@ -15,9 +16,6 @@ use Complaints\Domain\BuyComplaint\ReviewMethod;
 use Complaints\Domain\Shared\Period;
 use DateTimeImmutable;
 
-/**
- * Решения по жалобам и решения по лотам: test_buy_complaint, test_buy_complaint_lots.
- */
 interface BuyComplaintRepository
 {
     /**
@@ -33,7 +31,8 @@ interface BuyComplaintRepository
     public function lock(int $id): BuyComplaint;
 
     /**
-     * Создаёт решение; null — для пары (закупка, окончание срока) решение уже есть.
+     * Создаёт решение со сроками обжалования и рассмотрения;
+     * null — для этой закупки и этого срока обжалования решение уже есть.
      */
     public function create(BuyComplaintCycle $decision, DateTimeImmutable $now): ?int;
 
@@ -43,11 +42,12 @@ interface BuyComplaintRepository
      * Условный переход: UPDATE … WHERE id = :id AND status = :from.
      *
      * @param array{
-     *     coordinator_user_id?: ?int,
-     *     approver_user_id?: int,
      *     sent_for_approval_at?: DateTimeImmutable,
-     *     decision_number?: string,
+     *     sent_by?: Actor,
+     *     coordinated_at?: DateTimeImmutable,
      *     approved_at?: DateTimeImmutable,
+     *     recalled_at?: DateTimeImmutable,
+     *     recalled_by?: Actor,
      *     execution_status?: ExecutionStatus,
      *     execution_period?: Period
      * } $changes
@@ -60,26 +60,29 @@ interface BuyComplaintRepository
      *
      * @return bool false — уже закреплено
      */
-    public function claim(int $id, int $reviewerUserId, DateTimeImmutable $now): bool;
+    public function claim(int $id, Actor $reviewer, DateTimeImmutable $now): bool;
 
+    /**
+     * Снимает закрепление за рассматривающим.
+     */
     public function release(int $id, DateTimeImmutable $now): void;
+
+    /**
+     * Назначает согласующего (необязателен) и утверждающего; прежние снимаются.
+     */
+    public function assignRoute(int $id, ?Actor $coordinator, Actor $approver, Actor $assignedBy, DateTimeImmutable $now): void;
+
+    /**
+     * Отзыв: снимает согласующего и утверждающего и очищает даты маршрута.
+     */
+    public function resetRoute(int $id, DateTimeImmutable $now): void;
 
     public function setReviewMethod(int $id, ReviewMethod $method, DateTimeImmutable $now): void;
 
     /**
-     * Исполнение решения завершено: in_progress -> executed.
+     * Исполнение решения завершено: на исполнении -> исполнено.
      */
     public function markExecuted(int $id, DateTimeImmutable $now): bool;
-
-    /**
-     * Блокирует закупку до конца транзакции — для нумерации решений (advisory-блокировка).
-     */
-    public function lockBuy(int $buyId): void;
-
-    /**
-     * Сколько решений по закупке уже получили номер.
-     */
-    public function countNumberedForBuy(int $buyId): int;
 
     /**
      * Неутверждённые решения, срок рассмотрения которых заканчивается в [from, to).
@@ -110,21 +113,27 @@ interface BuyComplaintRepository
      */
     public function ensureLot(int $buyComplaintId, int $buyLotId, DateTimeImmutable $now): int;
 
+    /**
+     * Пересчитывает количество лотов и жалоб решения после сбора.
+     */
+    public function refreshCounts(int $id): void;
+
     public function setDecisionType(int $lotId, ?DecisionType $type, DateTimeImmutable $now): void;
 
     /**
      * Условный переход исполнения лота:
      *   null    -> pending   при утверждении;
-     *   pending -> started   пересмотр итогов запущен (execution_started_at);
-     *   pending -> executed  лот отменён (execution_started_at, executed_at);
-     *   started -> executed  пересмотр завершён (executed_at).
+     *   pending -> started   пересмотр итогов запущен;
+     *   pending -> executed  лот отменён;
+     *   started -> executed  пересмотр завершён.
      *
+     * @param Actor|null $actor кто начал исполнение; null — система
      * @return bool false — исполнение лота уже в другом статусе
      */
-    public function moveLotExecution(int $lotId, ?LotExecutionStatus $from, LotExecutionStatus $to, DateTimeImmutable $at, ?int $actorUserId): bool;
+    public function moveLotExecution(int $lotId, ?LotExecutionStatus $from, LotExecutionStatus $to, DateTimeImmutable $at, ?Actor $actor): bool;
 
     /**
-     * Лоты, по которым идёт пересмотр итогов (started).
+     * Лоты, по которым идёт пересмотр итогов.
      *
      * @return list<BuyComplaintLot>
      */

@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace Complaints\Domain\BuyComplaint;
 
 /**
- * Статус исполнения решения по лоту (test_buy_complaint_lots.execution_status).
+ * Статус исполнения решения по лоту: следует из дат trd_complaint_lots
+ * (execution_started_at, executed_at).
  */
 enum LotExecutionStatus: string
 {

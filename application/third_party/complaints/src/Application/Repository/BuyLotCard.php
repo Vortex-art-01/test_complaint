@@ -7,7 +7,7 @@ namespace Complaints\Application\Repository;
 use Complaints\Application\Shared\LocalizedText;
 
 /**
- * Лот закупки из test_buy_lots.
+ * Лот закупки проекта (trd_buy_lot).
  */
 final readonly class BuyLotCard
 {

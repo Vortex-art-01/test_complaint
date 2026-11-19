@@ -15,10 +15,10 @@ use Complaints\Application\Port\FileStorage;
 use Complaints\Application\Port\StoredFile;
 use Complaints\Application\Repository\AttachmentRepository;
 use Complaints\Application\Repository\DocumentRepository;
-use Complaints\Application\Repository\SignatureRepository;
 
 /**
  * Скачивание файла модуля с проверкой прав (а не по ссылке хранилища).
+ * Документы и вложения адресуются id файла.
  */
 final class DownloadFile
 {
@@ -28,7 +28,6 @@ final class DownloadFile
         private readonly FileAccess $access,
         private readonly DocumentRepository $documents,
         private readonly AttachmentRepository $attachments,
-        private readonly SignatureRepository $signatures,
         private readonly FileStorage $files,
     ) {
     }
@@ -44,7 +43,6 @@ final class DownloadFile
         $fileId = match ($kind) {
             FileKind::Document => $this->documentFile($id, $user),
             FileKind::Attachment => $this->attachmentFile($id, $user),
-            FileKind::Signature => $this->signatureFile($id, $user),
         };
 
         return $this->files->read($fileId);
@@ -64,13 +62,5 @@ final class DownloadFile
         $this->guard->assertAllowed($this->access->canReadAttachment($user, $attachment));
 
         return $attachment->fileId;
-    }
-
-    private function signatureFile(int $signatureId, CurrentUser $user): int
-    {
-        $signature = $this->signatures->get($signatureId);
-        $this->guard->assertAllowed($this->access->canReadSignatures($user, $this->documents->get($signature->documentId)));
-
-        return $signature->signatureFileId ?? throw new NotFound();
     }
 }

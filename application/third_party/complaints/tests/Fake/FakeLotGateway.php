@@ -11,9 +11,6 @@ use DateTimeImmutable;
 final class FakeLotGateway implements ProcurementLotGateway
 {
     /** @var array<int, DateTimeImmutable> */
-    public array $protocols = [];
-
-    /** @var array<int, DateTimeImmutable> */
     public array $revisionsCompleted = [];
 
     /** @var list<LotDecisionAction> */
@@ -21,11 +18,6 @@ final class FakeLotGateway implements ProcurementLotGateway
 
     /** @var list<LotDecisionAction> */
     public array $revised = [];
-
-    public function resultsProtocolPublishedAt(int $buyLotId): ?DateTimeImmutable
-    {
-        return $this->protocols[$buyLotId] ?? null;
-    }
 
     public function procurementStatusName(int $buyId): string
     {

@@ -22,10 +22,10 @@ final class TestDatabase
     public const SCHEMA = 'complaints_it';
 
     private const MIGRATIONS = [
-        '001_existing_tables_keys',
-        '002_buy_complaint',
-        '003_app_complaint',
-        '004_complaint_documents',
+        '001_reference_tables',
+        '002_trd_buy_appeal_dates',
+        '003_trd_complaint',
+        '004_app_complaint',
     ];
 
     private static ?PDO $pdo = null;
@@ -76,8 +76,7 @@ final class TestDatabase
     }
 
     /**
-     * Выражения выполняются по одному: CREATE INDEX CONCURRENTLY
-     * нельзя выполнять внутри транзакции.
+     * Выражения выполняются по одному, как их выполнил бы psql.
      */
     private static function runScript(PDO $pdo, string $path): void
     {

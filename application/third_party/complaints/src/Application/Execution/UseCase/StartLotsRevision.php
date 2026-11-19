@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Complaints\Application\Execution\UseCase;
 
 use Complaints\Application\Access\AccessGuard;
+use Complaints\Application\Access\Actor;
 use Complaints\Application\Exception\AccessDenied;
 use Complaints\Application\Exception\IntegrationFailure;
 use Complaints\Application\Exception\StatusConflict;
@@ -68,7 +69,7 @@ final class StartLotsRevision
 
             foreach ($lots as $lot) {
                 $this->lotGateway->returnLotForRevision($this->lotActions->basis($decision, $lot, $user->userId));
-                $this->transitions->moveLotExecution($lot, LotExecutionStatus::Started, $user->userId, $now);
+                $this->transitions->moveLotExecution($lot, LotExecutionStatus::Started, $now, Actor::of($user));
             }
 
             return count($lots);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Complaints\Application\AppComplaint\UseCase;
 
 use Complaints\Application\Access\AccessGuard;
+use Complaints\Application\Access\Actor;
 use Complaints\Application\AppComplaint\DraftAccess;
 use Complaints\Application\Exception\AccessDenied;
 use Complaints\Application\Exception\SignatureRejected;
@@ -69,8 +70,8 @@ final class SignComplaint
             $document = $this->documents->current(DocumentType::AppComplaint, $complaintId)
                 ?? throw new StatusConflict();
             $supplier = $this->directory->organization($complaint->supplierOrgId);
-            $this->signatures->sign($document, SignerRole::Head, $user->userId, $cmsBase64, $supplier->bin, $now);
-            $this->transitions->moveComplaint($complaint, AppComplaintStatus::Signed, $user->userId, $now);
+            $this->signatures->sign($document, SignerRole::Head, Actor::of($user), $cmsBase64, $supplier->bin, $now);
+            $this->transitions->moveComplaint($complaint, AppComplaintStatus::Signed, $now);
 
             $this->notifier->notifyUser($complaint->authorUserId, new Notification(
                 NotificationType::ComplaintSigned,

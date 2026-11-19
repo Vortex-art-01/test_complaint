@@ -65,9 +65,8 @@ final class SubmitComplaint
             $this->transitions->moveComplaint(
                 $complaint,
                 AppComplaintStatus::Submitted,
-                $user->userId,
                 $now,
-                ['submitted_at' => $now],
+                ['submitted_at' => $now, 'submitted_by_user_id' => $user->userId],
             );
         });
     }

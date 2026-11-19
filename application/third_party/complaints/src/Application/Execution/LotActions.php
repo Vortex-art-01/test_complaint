@@ -14,7 +14,7 @@ use Complaints\Domain\BuyComplaint\BuyComplaintLot;
 use Complaints\Domain\Document\DocumentType;
 
 /**
- * Основание для действий над лотом в системе закупок: номер и дата решения,
+ * Основание для действий над лотом в системе закупок: номер (id) и дата решения,
  * орган, подписанный сводный документ и номера жалоб по лоту.
  */
 final class LotActions
@@ -32,7 +32,7 @@ final class LotActions
     public function basis(BuyComplaint $decision, BuyComplaintLot $lot, int $actorUserId): LotDecisionAction
     {
         $document = $this->documents->current(DocumentType::ConsolidatedAnswer, $decision->id);
-        if ($document === null || $decision->decisionNumber === null || $decision->approvedAt === null) {
+        if ($document === null || $decision->approvedAt === null) {
             throw new StatusConflict();
         }
 
@@ -44,7 +44,7 @@ final class LotActions
         return new LotDecisionAction(
             $decision->buyId,
             $lot->buyLotId,
-            $decision->decisionNumber,
+            $decision->id,
             $decision->approvedAt,
             $this->directory->organization($decision->authorityOrgId)->name->ru,
             $document->fileId,

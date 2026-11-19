@@ -7,7 +7,7 @@ namespace Complaints\Application\Port;
 use DateTimeImmutable;
 
 /**
- * Основание для действия над лотом в системе закупок: утверждённое решение
+ * Основание для действия над лотом в системе закупок: утверждённое решение (его номер — id)
  * по жалобам. Поля формы отмены (макет 3.5) заполняются из него.
  */
 final readonly class LotDecisionAction
@@ -18,7 +18,7 @@ final readonly class LotDecisionAction
     public function __construct(
         public int $buyId,
         public int $buyLotId,
-        public string $decisionNumber,
+        public int $decisionId,
         public DateTimeImmutable $decisionDate,
         public string $authorityName,
         public int $basisFileId,

@@ -41,13 +41,7 @@ final class WithdrawComplaint
 
         $this->transactions->transactional(function () use ($user, $complaintId, $now): void {
             $complaint = $this->access->lockForAuthor($user, $complaintId, [AppComplaintStatus::Submitted], $now);
-            $this->transitions->moveComplaint(
-                $complaint,
-                AppComplaintStatus::Withdrawn,
-                $user->userId,
-                $now,
-                ['withdrawn_at' => $now],
-            );
+            $this->transitions->moveComplaint($complaint, AppComplaintStatus::Withdrawn, $now);
         });
     }
 }

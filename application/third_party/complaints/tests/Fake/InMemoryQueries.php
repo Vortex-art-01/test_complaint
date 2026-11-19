@@ -14,8 +14,6 @@ use Complaints\Domain\BuyComplaint\BuyComplaintStatus;
 use Complaints\Domain\BuyComplaint\ExecutionStatus;
 use Complaints\Domain\BuyComplaint\Verdict;
 use Complaints\Domain\Document\DocumentType;
-use Complaints\Domain\Signature\SignerRole;
-use DateTimeImmutable;
 
 /**
  * Списки реестров, вычисленные по репозиториям в памяти.
@@ -27,7 +25,6 @@ final class InMemoryQueries implements ComplaintQueries
         private readonly InMemoryBuyComplaints $decisions,
         private readonly InMemoryProcurement $procurement,
         private readonly InMemoryDocuments $documents,
-        private readonly InMemorySignatures $signatures,
     ) {
     }
 
@@ -46,7 +43,6 @@ final class InMemoryQueries implements ComplaintQueries
                 $buy->number,
                 $buy->name,
                 $this->procurement->buyLot($lot->buyLotId)->number,
-                $this->headSignedAt($complaint->id),
                 $lot->verdict,
             );
         }
@@ -140,21 +136,6 @@ final class InMemoryQueries implements ComplaintQueries
         }
 
         return $types;
-    }
-
-    private function headSignedAt(int $complaintId): ?DateTimeImmutable
-    {
-        $document = $this->documents->current(DocumentType::AppComplaint, $complaintId);
-        if ($document === null) {
-            return null;
-        }
-        foreach ($this->signatures->ofDocument($document->id) as $signature) {
-            if ($signature->role === SignerRole::Head && $signature->isSigned()) {
-                return $signature->signedAt;
-            }
-        }
-
-        return null;
     }
 
     /**

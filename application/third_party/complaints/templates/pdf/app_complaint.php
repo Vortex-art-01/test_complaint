@@ -54,7 +54,6 @@ $requisites = $v['requisites'];
 
 <h2><?= $doc->label('section.appeal') ?></h2>
 <table>
-    <tr><th><?= $doc->label('field.protocol_published_at') ?></th><td><?= $doc->e($v['protocol_published_at']) ?></td></tr>
     <tr><th><?= $doc->label('field.appeal_period') ?></th><td><?= $doc->e($v['appeal_period']['from']) ?> — <?= $doc->e($v['appeal_period']['to']) ?></td></tr>
 </table>
 

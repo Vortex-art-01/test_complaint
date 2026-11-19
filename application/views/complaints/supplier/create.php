@@ -46,7 +46,6 @@ defined('BASEPATH') or exit('No direct script access allowed');
                                 <th></th>
                                 <th><?= complaints_te('complaints_lot_number') ?></th>
                                 <th><?= complaints_te('complaints_lot_name') ?></th>
-                                <th><?= complaints_te('complaints_protocol_published_at') ?></th>
                                 <th><?= complaints_te('complaints_appeal_period') ?></th>
                             </tr>
                             <?php foreach ($buy->lots as $index => $lot) : ?>
@@ -54,7 +53,6 @@ defined('BASEPATH') or exit('No direct script access allowed');
                                     <td><input type="radio" name="app_lot_id" value="<?= (int) $lot->appLot->id ?>" id="complaints-lot-<?= (int) $lot->appLot->id ?>"<?= $index === 0 ? ' checked' : '' ?>></td>
                                     <td><label for="complaints-lot-<?= (int) $lot->appLot->id ?>"><?= complaints_e($lot->buyLot->number) ?></label></td>
                                     <td><?= complaints_text($lot->buyLot->name) ?></td>
-                                    <td><?= complaints_moment($lot->protocolPublishedAt) ?></td>
                                     <td><?= complaints_moment($lot->appealPeriod->startsAt) ?> — <?= complaints_moment($lot->appealPeriod->displayEndsAt()) ?></td>
                                 </tr>
                             <?php endforeach; ?>

@@ -9,12 +9,12 @@ namespace Complaints\Application\Port;
  */
 enum NotificationTarget: string
 {
-    /** Жалоба поставщика; id — test_app_complaint.id. */
+    /** Жалоба поставщика; id — app_complaint.id. */
     case Complaint = 'complaint';
 
-    /** Решение у уполномоченного органа; id — test_buy_complaint.id. */
+    /** Решение у уполномоченного органа; id — trd_complaint.id. */
     case Decision = 'decision';
 
-    /** Решение у организатора; id — test_buy_complaint.id. */
+    /** Решение у организатора; id — trd_complaint.id. */
     case Execution = 'execution';
 }

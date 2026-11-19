@@ -7,7 +7,8 @@ namespace Complaints\Domain\Document;
 use DateTimeImmutable;
 
 /**
- * Файл, приложенный к жалобе или к ответу (снимок строки test_complaint_attachments).
+ * Файл, приложенный к жалобе или к ответу (строка app_complaint_docs или trd_complaint_docs).
+ * id вложения — id файла в хранилище проекта.
  */
 final readonly class Attachment
 {

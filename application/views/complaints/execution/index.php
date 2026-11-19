@@ -56,7 +56,7 @@ use Complaints\Domain\BuyComplaint\ExecutionStatus;
                     <tr>
                         <td><?= complaints_e($item->row->buyNumber) ?><br><small><?= complaints_text($item->row->buyName) ?></small></td>
                         <td><?= complaints_e($item->procurementStatusName) ?></td>
-                        <td><?= complaints_te('complaints_decision_number_date', ['number' => (string) $decision->decisionNumber, 'date' => complaints_moment($decision->approvedAt)]) ?></td>
+                        <td><?= complaints_te('complaints_decision_number_date', ['number' => $decision->id, 'date' => complaints_moment($decision->approvedAt)]) ?></td>
                         <td><?= complaints_text($item->authority->name) ?></td>
                         <td>
                             <?php foreach ($item->row->decisionTypes as $type) : ?>

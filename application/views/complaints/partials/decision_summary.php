@@ -34,10 +34,10 @@ $decision = $overview->decision;
             <?php if ($overview->approver !== null) : ?>
                 <tr><th><?= complaints_te('complaints_approver') ?></th><td><?= complaints_e($overview->approver->fullName) ?></td></tr>
             <?php endif; ?>
-            <?php if ($decision->decisionNumber !== null) : ?>
+            <?php if ($decision->approvedAt !== null) : ?>
                 <tr>
                     <th><?= complaints_te('complaints_decision') ?></th>
-                    <td><?= complaints_te('complaints_decision_number_date', ['number' => $decision->decisionNumber, 'date' => complaints_moment($decision->approvedAt)]) ?></td>
+                    <td><?= complaints_te('complaints_decision_number_date', ['number' => $decision->id, 'date' => complaints_moment($decision->approvedAt)]) ?></td>
                 </tr>
                 <tr>
                     <th><?= complaints_te('complaints_execution') ?></th>

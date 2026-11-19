@@ -73,7 +73,11 @@ final class SqlProcurementRepository implements ProcurementRepository
         // несколько заявок на закупку (отозванные, черновики): вернуть заявку, по которой
         // подведены итоги. Сейчас берётся последняя заявка организации на закупку.
         $row = $this->db->row(
-            $this->appSelect() . sprintf(' WHERE a.buy_id = :buy AND a.%s = :supplier ORDER BY a.id DESC LIMIT 1', $this->schema->appSupplier()),
+            $this->appSelect() . sprintf(
+                ' WHERE a.%s = :buy AND a.%s = :supplier ORDER BY a.id DESC LIMIT 1',
+                $this->schema->appBuy(),
+                $this->schema->appSupplier(),
+            ),
             ['buy' => $buyId, 'supplier' => $supplierOrgId],
         );
 
@@ -91,7 +95,10 @@ final class SqlProcurementRepository implements ProcurementRepository
     {
         return array_map(
             fn (array $row): ApplicationLotCard => $this->applicationLotCard($row),
-            $this->db->rows($this->appLotSelect() . ' WHERE al.test_app_id = :app ORDER BY al.id', ['app' => $appId]),
+            $this->db->rows(
+                $this->appLotSelect() . sprintf(' WHERE al.%s = :app ORDER BY al.id', $this->schema->appLotApp()),
+                ['app' => $appId],
+            ),
         );
     }
 
@@ -105,13 +112,17 @@ final class SqlProcurementRepository implements ProcurementRepository
     private function buySelect(): string
     {
         return sprintf(
-            'SELECT b.id, b.%s AS number, b.%s AS name_ru, b.%s AS name_kz, b.%s AS method_id, b.%s AS organizer_org_id, b.%s AS published_at FROM %s b',
+            'SELECT b.id, b.%s AS number, b.%s AS name_ru, b.%s AS name_kz, b.%s AS method_id, b.%s AS organizer_org_id,'
+            . ' b.%s AS published_at, CAST(CAST(b.%s AS date) AS text) AS appeal_start,'
+            . ' CAST(CAST(b.%s AS date) AS text) AS appeal_end FROM %s b',
             $this->schema->buyNumber(),
             $this->schema->buyNameRu(),
             $this->schema->buyNameKz(),
             $this->schema->buyMethod(),
             $this->schema->buyOrganizer(),
             $this->schema->buyPublishedAt(),
+            $this->schema->buyAppealStart(),
+            $this->schema->buyAppealEnd(),
             $this->schema->buyTable(),
         );
     }
@@ -130,12 +141,22 @@ final class SqlProcurementRepository implements ProcurementRepository
 
     private function appSelect(): string
     {
-        return sprintf('SELECT a.id, a.buy_id, a.%s AS supplier_org_id FROM %s a', $this->schema->appSupplier(), $this->schema->appTable());
+        return sprintf(
+            'SELECT a.id, a.%s AS buy_id, a.%s AS supplier_org_id FROM %s a',
+            $this->schema->appBuy(),
+            $this->schema->appSupplier(),
+            $this->schema->appTable(),
+        );
     }
 
     private function appLotSelect(): string
     {
-        return sprintf('SELECT al.id, al.test_app_id, al.test_buy_lots_id FROM %s al', $this->schema->appLotTable());
+        return sprintf(
+            'SELECT al.id, al.%s AS app_id, al.%s AS buy_lot_id FROM %s al',
+            $this->schema->appLotApp(),
+            $this->schema->appLotBuyLot(),
+            $this->schema->appLotTable(),
+        );
     }
 
     /**
@@ -150,6 +171,7 @@ final class SqlProcurementRepository implements ProcurementRepository
             $this->values->int($row['method_id']),
             $this->values->int($row['organizer_org_id']),
             $this->values->moment($row['published_at']),
+            $this->values->daysOrNull($row['appeal_start'], $row['appeal_end']),
         );
     }
 
@@ -185,8 +207,8 @@ final class SqlProcurementRepository implements ProcurementRepository
     {
         return new ApplicationLotCard(
             $this->values->int($row['id']),
-            $this->values->int($row['test_app_id']),
-            $this->values->int($row['test_buy_lots_id']),
+            $this->values->int($row['app_id']),
+            $this->values->int($row['buy_lot_id']),
         );
     }
 }

@@ -16,7 +16,6 @@ use Complaints\Application\Repository\BuyComplaintCycle;
 use Complaints\Application\Repository\BuyComplaintRepository;
 use Complaints\Application\Repository\CollectionBatch;
 use Complaints\Application\Repository\ProcurementRepository;
-use Complaints\Application\Repository\StatusHistoryRepository;
 use Complaints\Application\Repository\TransactionRunner;
 use Complaints\Application\Service\DeadlineCalculator;
 use Complaints\Application\Service\DocumentIssuer;
@@ -27,18 +26,17 @@ use Complaints\Domain\AppComplaint\AppComplaintStatus;
 use Complaints\Domain\BuyComplaint\BuyComplaint;
 use Complaints\Domain\BuyComplaint\BuyComplaintStatus;
 use Complaints\Domain\Document\DocumentType;
-use Complaints\Domain\History\HistoryEntityType;
 use DateInterval;
 use DateTimeImmutable;
 
 /**
- * Сбор жалоб (cron): по каждой паре (закупка, окончание срока обжалования)
- * с поданными жалобами в одной транзакции создаёт решение и лоты решения,
- * связывает с ними жалобы, переводит жалобы в in_review, пишет историю
- * и уведомляет рассматривающих органа.
+ * Сбор жалоб (cron): по каждой закупке с поданными жалобами, срок обжалования
+ * которой закончился, в одной транзакции создаёт решение со сроками обжалования
+ * и рассмотрения и лоты решения, связывает с ними жалобы, переводит жалобы
+ * в in_review и уведомляет рассматривающих органа.
  *
- * Идемпотентна: решение на пару одно (уникальный ключ buy_id, appeal_ends_at),
- * лот решения на лот закупки один, жалобы берутся только в статусе submitted.
+ * Идемпотентна: решение на закупку и срок обжалования одно, лот решения
+ * на лот закупки один, жалобы берутся только поданные и ещё не собранные.
  */
 final class CollectSubmittedComplaints
 {
@@ -49,7 +47,6 @@ final class CollectSubmittedComplaints
         private readonly AuthorityResolver $authorities,
         private readonly DeadlineCalculator $deadlines,
         private readonly StatusTransitioner $transitions,
-        private readonly StatusHistoryRepository $history,
         private readonly DocumentIssuer $documents,
         private readonly Notifier $notifier,
         private readonly TransactionRunner $transactions,
@@ -86,12 +83,12 @@ final class CollectSubmittedComplaints
             return;
         }
 
-        $complaints = $this->complaints->lockSubmittedOfBatch($batch->buyId, $batch->appealPeriod->endsAt);
+        $complaints = $this->complaints->lockSubmittedOfBuy($batch->buyId);
         foreach ($complaints as $complaint) {
             $lot = $this->complaints->lotOf($complaint->id);
             $decisionLotId = $this->decisions->ensureLot($decision->id, $lot->buyLotId, $now);
             $this->complaints->linkToBuyComplaintLot($lot->id, $decisionLotId, $now);
-            $this->transitions->moveComplaint($complaint, AppComplaintStatus::InReview, null, $now, [
+            $this->transitions->moveComplaint($complaint, AppComplaintStatus::InReview, $now, [
                 'buy_complaint_id' => $decision->id,
             ]);
         }
@@ -99,8 +96,9 @@ final class CollectSubmittedComplaints
             return;
         }
 
+        $this->decisions->refreshCounts($decision->id);
         // Сводный документ больше не охватывает все жалобы.
-        $this->documents->retire(DocumentType::ConsolidatedAnswer, $decision->id, null, $now);
+        $this->documents->retire(DocumentType::ConsolidatedAnswer, $decision->id, $now);
         $report->complaintsCollected += count($complaints);
         $this->notifyReviewers($decision, count($complaints));
     }
@@ -110,21 +108,12 @@ final class CollectSubmittedComplaints
         $createdId = $this->decisions->create(new BuyComplaintCycle(
             $batch->buyId,
             $this->authorities->authorityFor($batch->buyId),
-            $batch->protocolPublishedAt,
             $batch->appealPeriod,
             $this->deadlines->reviewPeriod($batch->appealPeriod),
         ), $now);
 
         if ($createdId !== null) {
             $report->decisionsCreated++;
-            $this->history->append(
-                HistoryEntityType::BuyComplaint,
-                $createdId,
-                null,
-                BuyComplaintStatus::InReview->value,
-                null,
-                $now,
-            );
 
             return $this->decisions->lock($createdId);
         }

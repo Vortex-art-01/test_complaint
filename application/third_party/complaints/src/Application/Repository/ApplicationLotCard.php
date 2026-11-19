@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Complaints\Application\Repository;
 
 /**
- * Лот заявки из test_app_lots.
+ * Лот заявки проекта (trd_app_lot).
  */
 final readonly class ApplicationLotCard
 {

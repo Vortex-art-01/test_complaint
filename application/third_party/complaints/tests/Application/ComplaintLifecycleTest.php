@@ -25,10 +25,10 @@ use Complaints\Application\Exception\SignatureRejected;
 use Complaints\Application\Exception\StatusConflict;
 use Complaints\Application\Exception\ValidationFailed;
 use Complaints\Application\Port\NotificationType;
+use Complaints\Application\Service\SignatureService;
 use Complaints\Application\Shared\UploadedFile;
 use Complaints\Domain\AppComplaint\AppComplaintStatus as Status;
 use Complaints\Domain\Document\DocumentType;
-use Complaints\Domain\History\HistoryEntityType;
 use Complaints\Domain\Signature\SignatureStatus;
 use Complaints\Tests\Support\World;
 use PHPUnit\Framework\TestCase;
@@ -69,21 +69,21 @@ final class ComplaintLifecycleTest extends TestCase
         self::assertNotNull($document);
         self::assertSame(Status::AwaitingSignature, $this->world->complaints->get($id)->status);
         self::assertSame([World::HEAD], $this->world->notifier->recipientsOf(NotificationType::ComplaintAwaitingSignature->value));
-        self::assertNotNull($this->world->complaints->get($id)->requisitesSnapshot);
 
         $this->world->actAs(World::HEAD);
         $this->world->get(SignComplaint::class)->execute($id, base64_encode('cms'));
         self::assertSame(Status::Signed, $this->world->complaints->get($id)->status);
-        self::assertSame(SignatureStatus::Signed, $this->world->signatures->ofDocument($document->id)[0]->status);
+        self::assertSame(
+            [SignatureStatus::Signed],
+            array_map(static fn ($s) => $s->status, $this->world->get(SignatureService::class)->signatures($document)),
+        );
+        self::assertCount(1, $this->world->fileSignatures->of($document->fileId));
 
         $this->world->get(SubmitComplaint::class)->execute($id);
         $complaint = $this->world->complaints->get($id);
         self::assertSame(Status::Submitted, $complaint->status);
         self::assertNotNull($complaint->submittedAt);
-        self::assertSame(
-            ['draft', 'awaiting_signature', 'signed', 'submitted'],
-            $this->world->history->trail(HistoryEntityType::AppComplaint, $id),
-        );
+        self::assertSame(World::HEAD, $complaint->submittedByUserId);
     }
 
     public function testSendingRequiresPhoneAndDescription(): void
@@ -147,7 +147,7 @@ final class ComplaintLifecycleTest extends TestCase
         self::assertCount(1, array_filter($this->world->documents->documents, static fn ($d): bool => $d->ownerId === $id));
     }
 
-    public function testReturningToDraftAnnulsSignatureAndUnfreezesRequisites(): void
+    public function testReturningToDraftRetiresSignedVersion(): void
     {
         $id = $this->world->signed();
         $document = $this->world->documents->current(DocumentType::AppComplaint, $id);
@@ -156,11 +156,15 @@ final class ComplaintLifecycleTest extends TestCase
 
         self::assertSame(Status::Draft, $this->world->complaints->get($id)->status);
         self::assertNull($this->world->documents->current(DocumentType::AppComplaint, $id));
-        self::assertSame(SignatureStatus::Annulled, $this->world->signatures->ofDocument($document->id)[0]->status);
-        self::assertNull($this->world->complaints->get($id)->requisitesSnapshot);
+        self::assertFalse($this->world->documents->get($document->id)->isCurrent);
 
         $this->world->get(SendComplaintForSignature::class)->execute($id);
-        self::assertSame(2, $this->world->documents->current(DocumentType::AppComplaint, $id)?->version);
+        $resent = $this->world->documents->current(DocumentType::AppComplaint, $id);
+        self::assertSame(2, $resent?->version);
+        self::assertSame(
+            [SignatureStatus::Pending],
+            array_map(static fn ($s) => $s->status, $this->world->get(SignatureService::class)->signatures($resent)),
+        );
     }
 
     public function testOneActiveComplaintPerApplicationLot(): void
@@ -186,7 +190,7 @@ final class ComplaintLifecycleTest extends TestCase
         $this->world->get(ChangeDraftLot::class)->execute($id, World::APP_LOT_B);
 
         self::assertSame(World::LOT_B, $this->world->complaints->lotOf($id)->buyLotId);
-        self::assertCount(2, $this->world->complaints->lots);
+        self::assertCount(1, $this->world->complaints->lots);
     }
 
     public function testSubmittedComplaintCannotBeDeletedButDraftCan(): void

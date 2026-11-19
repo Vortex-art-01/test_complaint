@@ -9,6 +9,7 @@ use Complaints\Application\Port\ApplicationEligibility;
 use Complaints\Application\Port\AuthorityResolver;
 use Complaints\Application\Port\Clock;
 use Complaints\Application\Port\CurrentUserProvider;
+use Complaints\Application\Port\FileSignatures;
 use Complaints\Application\Port\FileStorage;
 use Complaints\Application\Port\Notifier;
 use Complaints\Application\Port\OrganizationDirectory;
@@ -26,6 +27,7 @@ use Complaints\Infrastructure\Pdf\TemplatePdfRenderer;
 use Complaints\Infrastructure\Persistence\Database;
 use Complaints\Infrastructure\Project\ConfiguredAuthorityResolver;
 use Complaints\Infrastructure\Project\ProjectCurrentUserProvider;
+use Complaints\Infrastructure\Project\ProjectFileSignatures;
 use Complaints\Infrastructure\Project\ProjectFileStorage;
 use Complaints\Infrastructure\Project\ProjectLotGateway;
 use Complaints\Infrastructure\Project\ProjectNotifier;
@@ -73,6 +75,7 @@ final class ModuleContainer
         $container->bind(OrganizationDirectory::class, ProjectOrganizationDirectory::class);
         $container->set(AuthorityResolver::class, new ConfiguredAuthorityResolver($config->authorityOrgId));
         $container->bind(FileStorage::class, ProjectFileStorage::class);
+        $container->bind(FileSignatures::class, ProjectFileSignatures::class);
         $container->bind(SignatureVerifier::class, ProjectSignatureVerifier::class);
         $container->set(NotificationTexts::class, new NotificationTexts(
             self::language($languageDirectory . '/russian/complaints_lang.php'),

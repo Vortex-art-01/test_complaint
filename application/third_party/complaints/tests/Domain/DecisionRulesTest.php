@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Complaints\Tests\Domain;
 
 use Complaints\Domain\AppComplaint\ComplaintNumber;
-use Complaints\Domain\BuyComplaint\DecisionNumber;
 use Complaints\Domain\BuyComplaint\DecisionType;
 use Complaints\Domain\BuyComplaint\DecisionTypePolicy;
 use Complaints\Domain\BuyComplaint\ExecutionStatus;
@@ -57,25 +56,13 @@ final class DecisionRulesTest extends TestCase
         self::assertNull(LotExecutionStatus::afterApproval(DecisionType::NoAction));
     }
 
-    public function testDecisionNumberFormat(): void
+    public function testComplaintNumberIsBuiltFromId(): void
     {
-        self::assertSame('Р-125407-1', DecisionNumber::forCycle('125407-1', 1)->value);
-        self::assertSame('Р-125407-1/2', DecisionNumber::forCycle(' 125407-1 ', 2)->value);
-    }
-
-    public function testDecisionNumberRejectsZeroCycle(): void
-    {
-        $this->expectException(InvalidArgumentException::class);
-
-        DecisionNumber::forCycle('125407-1', 0);
-    }
-
-    public function testComplaintNumberFormat(): void
-    {
-        self::assertSame('Ж-000221', ComplaintNumber::fromString('Ж-000221')->value);
+        self::assertSame('Ж-000221', ComplaintNumber::of(221)->value);
+        self::assertSame('Ж-1234567', ComplaintNumber::of(1234567)->value);
 
         $this->expectException(InvalidArgumentException::class);
-        ComplaintNumber::fromString('Ж-12');
+        ComplaintNumber::of(0);
     }
 
     public function testSha256OfBytes(): void

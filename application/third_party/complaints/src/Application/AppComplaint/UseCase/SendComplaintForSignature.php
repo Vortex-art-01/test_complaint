@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Complaints\Application\AppComplaint\UseCase;
 
+use Complaints\Application\Access\Actor;
 use Complaints\Application\AppComplaint\ComplaintContentRules;
 use Complaints\Application\AppComplaint\ComplaintPdf;
 use Complaints\Application\AppComplaint\ComplaintRequisites;
@@ -20,10 +21,8 @@ use Complaints\Application\Port\NotificationType;
 use Complaints\Application\Port\Notifier;
 use Complaints\Application\Repository\AppComplaintRepository;
 use Complaints\Application\Repository\TransactionRunner;
-use Complaints\Application\Service\SignatureService;
 use Complaints\Application\Service\StatusTransitioner;
 use Complaints\Domain\AppComplaint\AppComplaintStatus;
-use Complaints\Domain\Signature\SignerRole;
 
 /**
  * «Далее» на форме: draft -> awaiting_signature. Фиксирует реквизиты,
@@ -39,7 +38,6 @@ final class SendComplaintForSignature
         private readonly AppComplaintRepository $complaints,
         private readonly ComplaintRequisites $requisites,
         private readonly ComplaintPdf $pdf,
-        private readonly SignatureService $signatures,
         private readonly StatusTransitioner $transitions,
         private readonly Notifier $notifier,
         private readonly TransactionRunner $transactions,
@@ -67,10 +65,8 @@ final class SendComplaintForSignature
             }
 
             $requisites = $this->requisites->current($complaint, $lot);
-            $this->complaints->saveRequisitesSnapshot($complaintId, $requisites->toArray(), $now);
-            $document = $this->pdf->issue($complaint, $requisites, $user->userId, $now);
-            $this->signatures->requestRoute($document, [SignerRole::Head->value => $complaint->headUserId], $now);
-            $this->transitions->moveComplaint($complaint, AppComplaintStatus::AwaitingSignature, $user->userId, $now);
+            $this->pdf->issue($complaint, $requisites, Actor::of($user), $now);
+            $this->transitions->moveComplaint($complaint, AppComplaintStatus::AwaitingSignature, $now);
 
             $this->notifier->notifyUser($complaint->headUserId, new Notification(
                 NotificationType::ComplaintAwaitingSignature,
